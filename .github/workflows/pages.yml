@@ -16,11 +16,19 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Prepare static site
+        run: |
+          mkdir -p "$RUNNER_TEMP/site"
+          rsync -a --delete \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            ./ "$RUNNER_TEMP/site/"
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: ${{ runner.temp }}/site
       - id: deployment
         uses: actions/deploy-pages@v4
