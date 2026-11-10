@@ -2,7 +2,7 @@
    - file dell'app: rete prima, copia in cache come riserva (aggiornamenti subito visibili)
    - librerie, font, icone e lettore OCR: cache prima (non cambiano; il lettore si salva al primo uso)
    - /api/*: mai in cache (i dati restano solo sul server) */
-const VERSION = "ga-v2";
+const VERSION = "ga-v3";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "fonts/fonts.css", "css/app.css", "css/themes.css", "js/engine.js", "js/config.js", "js/runtime-config.js", "js/i18n.js", "js/icons.js",
   "js/storage.js", "js/settings.js", "js/scan-parse.js", "js/scan.js", "js/accounting.js", "js/events.js", "js/app.js", "vendor/xlsx.full.min.js", "vendor/chart.umd.min.js", "assets/logo.svg", "icons/icon-192.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
