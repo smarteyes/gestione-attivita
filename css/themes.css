@@ -43,74 +43,50 @@ html.theme-dark {
 .theme-dark .icon-chip { background: #232327; color: var(--ink2); }
 .theme-dark .side { background: #0e0e10; }
 
-/* ================= PARIGINO: Bare bliss nude (#F7F2EC, #F3E1E1, #EAC7C3, #DDC3B6, #C7B9AC) ================= */
+/* ================= PARIGINO: stessa grafica di Oliva, palette Bare bliss ================= */
 html.theme-paris {
   --bg: #F7F2EC; --card: #FFFCFA; --raised: #FFFFFF; --field: #FFFFFF; --hover: #F3E1E1;
   --ink: #5C4540; --ink2: #6E5248; --mute: #6E5E52; --mute2: #7A6A5E; --line: #DDC3B6; --line2: #EAC7C3;
   --accent: #6B4A45; --accent-soft: #F3E1E1; --on-accent: #F7F2EC; --neg: #9b3b2e;
-  --bar: rgba(247, 242, 236, .97); --backdrop: rgba(92, 69, 64, .38); --shadow: none; --shadow-pop: 0 12px 30px rgba(92, 69, 64, .12);
-  --r: 2px; --r-sm: 2px; --r-btn: 0px; --gap: 14px;
-  --font: "Jost", "Futura", system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
-  --font-head: "Cormorant Garamond", "Garamond", "Times New Roman", "Songti SC", "STSong", "SimSun", serif;
-  --ch-ink: #6E5248; --ch-mute: #7A6A5E; --ch-grid: #EAC7C3; --ch-2: #DDC3B6; --accent-fill: rgba(107, 74, 69, .08);
-  --ch-pal: #6B4A45,#EAC7C3,#DDC3B6,#C7B9AC,#F3E1E1,#5C4540,#E8B8B2,#C7B9AC;
-  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236E5E52' stroke-width='1.2'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
+  --bar: rgba(247, 242, 236, .97); --backdrop: rgba(92, 69, 64, .35); --shadow: 0 2px 10px rgba(107, 74, 69, .08); --shadow-pop: 0 14px 34px rgba(92, 69, 64, .15);
+  --r: 22px; --r-sm: 16px; --gap: 16px;
+  --font: "Outfit", system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-head: "Fraunces", Georgia, "Songti SC", "SimSun", serif;
+  --ch-ink: #6E5248; --ch-mute: #7A6A5E; --ch-grid: #EAC7C3; --ch-2: #DDC3B6; --accent-fill: rgba(107, 74, 69, .09);
+  --ch-pal: #6B4A45,#DDC3B6,#EAC7C3,#F3E1E1,#C7B9AC,#5C4540,#E8B8B2,#7A6A5E;
 }
-.theme-paris body { font-weight: 400; letter-spacing: .01em; }
-.theme-paris h1, .theme-paris h2, .theme-paris h3 { font-weight: 500; letter-spacing: .01em; }
-.theme-paris h1 { font-size: 2rem; } .theme-paris .card h3, .theme-paris .card-h h3 { font-size: 1.3rem; font-weight: 600; }
-/* banda rosa nude (palette) a tutta larghezza; testo scuro per contrasto AA */
+.theme-paris h1, .theme-paris h2, .theme-paris h3 { font-weight: 600; letter-spacing: -0.01em; }
+.theme-paris h1 { font-size: 1.75rem; }
+/* testata morbida a "collina" (come Oliva) */
 .theme-paris .home-head, .theme-paris .main > .page-head {
-  margin: calc(-1 * var(--mp-t)) calc(-1 * var(--mp-x)) calc(var(--gap) + 6px); padding: calc(var(--mp-t) + 2px) var(--mp-x) 20px;
-  background: #EAC7C3; color: #5C4540; border-bottom: 1px solid #DDC3B6; box-shadow: 0 6px 0 -3px #F3E1E1;
+  margin: calc(-1 * var(--mp-t)) calc(-1 * var(--mp-x)) calc(var(--gap) + 4px); padding: calc(var(--mp-t) + 4px) var(--mp-x) 30px;
+  background: #EAC7C3; border-radius: 0 0 50% 50% / 0 0 30px 30px;
 }
-.theme-paris .home-head h1, .theme-paris .main > .page-head h1 { color: #5C4540; font-weight: 400; }
-.theme-paris .home-head h1 { font-size: 2.3rem; line-height: 1.05; }
-.theme-paris .home-head small, .theme-paris .main > .page-head small { color: #6E5248; text-transform: uppercase; letter-spacing: .28em; font-size: .62rem; }
-.theme-paris .brand-script { display: block; font-family: "Pinyon Script", "Snell Roundhand", cursive; font-size: 1.7rem; line-height: 1; color: #6B4A45; margin: 2px 0 6px; letter-spacing: 0; }
-.theme-paris .home-head .btn.ghost, .theme-paris .main > .page-head .btn.ghost { color: #5C4540; border: 1px solid rgba(92, 69, 64, .35); text-transform: uppercase; letter-spacing: .16em; font-size: .68rem; }
-.theme-paris .main > .page-head .btn.primary { background: #6B4A45; color: #F7F2EC; border-color: #6B4A45; }
-.theme-paris .main > .page-head .badge { color: #5C4540; }
-/* etichette maiuscole spaziate, linee sottili */
-.theme-paris .label, .theme-paris .kpi > span:first-child, .theme-paris .tbl th, .theme-paris label { text-transform: uppercase; letter-spacing: .2em; font-size: .62rem; font-weight: 500; color: var(--mute); }
-.theme-paris label { gap: 8px; }
-.theme-paris .card { border-color: var(--line); }
-.theme-paris .hero { background: #F3E1E1; border: 0; padding: 22px 20px; text-align: center; }
-.theme-paris .hero .hero-sub, .theme-paris .hero .acc-chips { justify-content: center; }
-.theme-paris .big { font-family: var(--font-head); font-weight: 500; font-size: 3rem; letter-spacing: 0; color: #5C4540; line-height: 1.05; }
-.theme-paris .big.neg { color: var(--neg); }
-.theme-paris .kpi b, .theme-paris .totals b { font-family: var(--font-head); font-weight: 600; font-size: 1.55rem; letter-spacing: 0; }
-.theme-paris .tx-amt b { font-family: var(--font-head); font-weight: 600; font-size: 1.12rem; } .theme-paris .tx-amt.in b { color: #6B4A45; }
-.theme-paris .tx-main b { font-weight: 500; }
-.theme-paris .kpis { gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.theme-paris .kpi { background: transparent; border: 0; border-radius: 0; padding: 14px 10px; text-align: center; align-items: center; }
-.theme-paris .kpis .kpi:nth-child(odd) { border-right: 1px solid var(--line); } .theme-paris .kpis .kpi:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
-@media (min-width: 640px) { .theme-paris .kpis .kpi { border-right: 1px solid var(--line); border-bottom: 0; } .theme-paris .kpis .kpi:last-child { border-right: 0; } }
-.theme-paris .chip { border-radius: 0; background: #FFFCFA; border-color: #C7B9AC; }
-.theme-paris .btn { text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; font-weight: 500; }
-.theme-paris .btn.ghost, .theme-paris .link-btn { text-transform: none; letter-spacing: .02em; font-size: .85rem; }
-.theme-paris .quick .btn { min-height: 54px; border-radius: 0; font-size: .74rem; }
-.theme-paris .closing-btn b { font-family: var(--font-head); font-size: 1.25rem; text-transform: none; letter-spacing: 0; font-weight: 600; } .theme-paris .closing-btn small { text-transform: none; letter-spacing: .04em; }
-.theme-paris .tx-ic { background: #F3E1E1; color: #6B4A45; border-radius: 50%; } .theme-paris .tx-ic.in { background: #EAC7C3; color: #5C4540; }
-.theme-paris .card .txlist .tx { border-bottom: 1px solid var(--line2); }
-.theme-paris .seg { background: transparent; border: 1px solid var(--line); border-radius: 0; } .theme-paris .seg > * { border-radius: 0; text-transform: uppercase; letter-spacing: .14em; font-size: .68rem; }
-.theme-paris .seg > .on { background: #6B4A45; color: #F7F2EC; box-shadow: none; }
-.theme-paris .tabbar { border-top: 1px solid var(--line); } .theme-paris .tabbar a { text-transform: uppercase; letter-spacing: .12em; font-size: .58rem; color: var(--mute); }
-.theme-paris .tabbar a.active { color: #5C4540; }
-.theme-paris .fab { border-radius: 50%; box-shadow: 0 0 0 4px #F7F2EC, 0 0 0 5px #C7B9AC; }
-.theme-paris .notice { background: #F3E1E1; color: #5C4540; border-radius: 0; border-left: 2px solid #6B4A45; }
-.theme-paris input, .theme-paris select, .theme-paris textarea { border-radius: 0; }
-.theme-paris .cl-row { border-color: var(--line); }
-.theme-paris .cl-in input { font-family: var(--font-head); font-weight: 600; font-size: 1.9rem; border-bottom-color: #C7B9AC; }
-.theme-paris .cl-total { background: #6B4A45; border-color: #6B4A45; } .theme-paris .cl-total .label, .theme-paris .cl-total small { color: #F3E1E1 !important; }
-.theme-paris .cl-total > b { color: #F7F2EC; font-family: var(--font-head); font-weight: 500; font-size: 2.1rem; }
-.theme-paris .tbl th { border-bottom-color: #C7B9AC; }
-@media (min-width: 900px) {
-  .theme-paris .side { background: #F3E1E1; border-right: 1px solid var(--line); }
-  .theme-paris .side .brand { font-family: "Pinyon Script", cursive; font-size: 1.6rem; font-weight: 400; color: #5C4540; }
-  .theme-paris .side nav a { text-transform: uppercase; letter-spacing: .14em; font-size: .7rem; border-radius: 0; }
-  .theme-paris .side nav a.active { background: #6B4A45; color: #F7F2EC; box-shadow: none; } .theme-paris .side nav a.active .ic { color: #F7F2EC; }
-}
+.theme-paris .home-head small { color: #6B4A45; font-weight: 500; }
+.theme-paris .home-head .btn.ghost, .theme-paris .main > .page-head .btn.ghost { background: rgba(247, 242, 236, .7); }
+.theme-paris .card { border-color: transparent; }
+.theme-paris .hero { background: #6B4A45; color: #F7F2EC; border-radius: 28px; }
+.theme-paris .hero .label, .theme-paris .hero .hero-sub, .theme-paris .hero .hero-sub b { color: #F3E1E1; }
+.theme-paris .hero .big { color: #fff; } .theme-paris .hero .big.neg { color: #ffd2c4; }
+.theme-paris .hero .chip { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .28); color: #F7F2EC; } .theme-paris .hero .chip .ic { color: #F3E1E1; }
+.theme-paris .hero .chip b { color: #fff; } .theme-paris .hero .chip b.neg { color: #ffd2c4; }
+.theme-paris .big { font-family: var(--font-head); font-weight: 600; font-size: 2.5rem; letter-spacing: -0.01em; }
+.theme-paris .kpi b, .theme-paris .totals b { font-family: var(--font-head); font-weight: 600; font-size: 1.3rem; }
+.theme-paris .kpi { border-radius: 20px; } .theme-paris .kpis .kpi:nth-child(even) { background: #F3E1E1; }
+.theme-paris .tx-ic { background: #F3E1E1; color: #6B4A45; border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%; } .theme-paris .tx-ic.in { background: #DDC3B6; color: #5C4540; }
+.theme-paris .chip { background: #fff; }
+.theme-paris .quick .btn { min-height: 56px; border-radius: 28px; }
+.theme-paris .closing-btn { background: #6B4A45; border-color: #6B4A45; }
+.theme-paris .fab { background: #6B4A45; box-shadow: 0 8px 20px rgba(107, 74, 69, .28); }
+.theme-paris .tabbar { border-top: 0; border-radius: 26px 26px 0 0; box-shadow: 0 -6px 20px rgba(92, 69, 64, .07); }
+.theme-paris .tabbar a.active { color: #6B4A45; font-weight: 500; }
+.theme-paris .seg { background: #F3E1E1; }
+.theme-paris .notice { background: #F3E1E1; color: #5C4540; }
+.theme-paris .cl-row .tx-ic { background: #F3E1E1; }
+.theme-paris .cl-in input { font-family: var(--font-head); font-weight: 600; }
+.theme-paris .cl-total { background: #F3E1E1; } .theme-paris .cl-total > b { color: #6B4A45; font-family: var(--font-head); }
+.theme-paris .side { background: #F3E1E1; border-right: 0; }
+.theme-paris .side nav a { border-radius: 999px; } .theme-paris .side nav a.active { background: #6B4A45; color: #F7F2EC; box-shadow: none; } .theme-paris .side nav a.active .ic { color: #F7F2EC; }
 
 /* ================= MACARON: pastelli da pasticceria su crema, carte "a cuscino" ================= */
 html.theme-macaron {
@@ -219,4 +195,3 @@ html.theme-sage {
 .theme-sage .cl-total { background: #DBDAAF; } .theme-sage .cl-total > b { color: #48521C; font-family: var(--font-head); }
 .theme-sage .side { background: #F3F4E8; border-right: 0; }
 .theme-sage .side nav a { border-radius: 999px; } .theme-sage .side nav a.active { background: #48521C; color: #FCFFF5; box-shadow: none; } .theme-sage .side nav a.active .ic { color: #FCFFF5; }
-.theme-paris .big, .theme-paris .kpi b, .theme-paris .totals b, .theme-paris .tx-amt b, .theme-paris .cl-in input, .theme-paris .cl-total > b { font-variant-numeric: lining-nums tabular-nums; }
