@@ -102,7 +102,7 @@ window.GA = window.GA || {};
     return `<div class="tx ${x.paid ? "" : "planned"}" data-tx="${x.id}">
       <button class="paid-dot ${x.paid ? "on" : ""}" data-toggle="${x.id}" title="${t("tx.tapPaid")}" aria-label="${x.paid ? t("tx.paid") : t("tx.planned")}" ${canEdit(x) ? "" : "disabled"}>${I(x.paid ? "check" : "circle")}</button>
       <span class="tx-ic ${x.type}" style="--h:${hue(x.categoryId || x.type)}">${I((c && c.icon) || (x.type === "in" ? "plus" : "tag"))}</span>
-      <span class="tx-main"><b>${esc(x.desc || (c ? c.name : t("tx.noCat")))}</b><small>${esc([c && x.desc ? c.name : "", a ? a.name : "", x.ref].filter(Boolean).join(" · "))}${x.eventId ? ` · ${I("link", "xs")} ${t("tx.fromEvent")}` : ""}${x.attachmentId ? ` · <span class="has-photo" title="${t("sc.photo")}">${I("clip", "xs")}</span>` : ""}</small></span>
+      <span class="tx-main"><b>${esc(x.desc || (c ? c.name : t("tx.noCat")))}</b><small>${esc([c && x.desc ? c.name : "", a ? a.name : "", x.ref].filter(Boolean).join(" · "))}${x.eventId ? ` · ${I("link", "xs")} ${t("tx.fromEvent")}` : ""}${x.invoiceId ? ` · ${I("link", "xs")} ${t("inv.fromInv")}` : ""}${x.attachmentId ? ` · <span class="has-photo" title="${t("sc.photo")}">${I("clip", "xs")}</span>` : ""}</small></span>
       ${compact ? "" : `<span class="tx-col">${U().fmtDate(x.date)}</span><span class="tx-col num">${esc(U().nameOf("vatRates", x.vatId))}</span><span class="tx-col num">${x.paid ? M(x.net) : "—"}</span>`}
       <span class="tx-amt ${x.type}"><b>${sign}${M(x.gross)}</b><small>${esc(sub)}</small></span></div>`;
   }
@@ -124,6 +124,7 @@ window.GA = window.GA || {};
       </section>
       <div class="quick"><a class="btn quick-in closing-btn" href="#/closing" id="homeClosing">${I("moon")}<span><b>${t("cl.title")}</b><small>${todayCl.length ? t("cl.todayDone", { v: M(todayCl.reduce((s, x) => s + x.gross, 0)) }) : t("cl.todayTodo")}</small></span></a><button class="btn quick-out" data-quick="out">${I("plus")}${t("tx.out")}</button></div>
       <div class="quick-more"><button class="link-btn" data-quick="in">${I("plus", "xs")}${t("cl.single")}</button><button class="link-btn" id="homeScan" data-scansheet>${I("camera", "xs")}${t("sc.short")}</button></div>
+      ${GA.invoicesUI ? GA.invoicesUI.homeCard() : ""}
       <div class="kpis">
         ${kpi(t("dash.inNet"), M(m.inNet), m.inRatio != null ? deltaTxt(m.inRatio, t("dash.vsPrev")) : "")}
         ${kpi(t("dash.outNet"), M(m.outNet), m.outRatio != null ? deltaTxt(m.outRatio, t("dash.vsPrev"), true) : "")}
@@ -480,7 +481,11 @@ window.GA = window.GA || {};
         const v = E.calendarDay(byDay[d] || [], d); inN += v.inNet; outN += v.outNet; sch += v.scheduled;
         (byDay[d] || []).forEach((x) => { if (x.type === "in") vs += x.vat; else vp += x.ded; });
         const w = E.isWorkday(d, wd);
-        cells.push(`<button class="d ${w ? "w" : "off"} ${d === today() ? "today" : ""}" data-day="${d}" ${admin ? "" : "disabled"} title="${U().fmtDate(d)} · ${w ? t("cal.workday") : t("cal.off")}${v.inNet ? " · +" + M(v.inNet) : ""}${v.outNet ? " · −" + M(v.outNet) : ""}${v.scheduled ? " · " + t("cal.scheduled") + " " + M(v.scheduled) : ""}"><span>${Number(d.slice(8))}</span>${v.inNet || v.outNet || v.scheduled ? `<i class="dots">${v.inNet ? '<em class="in"></em>' : ""}${v.outNet ? '<em class="out"></em>' : ""}${v.scheduled ? '<em class="sch"></em>' : ""}</i>` : ""}</button>`);
+        const invs = (S().invoices || []).filter((x) => (x.dueDate || "") === d && E.invoiceDueState(x, today()) !== "paid");
+        const invOver = invs.some((x) => E.invoiceDueState(x, today()) === "overdue");
+        const invMark = invs.length ? `<em class="inv${invOver ? " over" : ""}"></em>` : "";
+        const invTip = invs.length ? " · " + t("inv.dueCal") + " (" + invs.length + ")" : "";
+        cells.push(`<button class="d ${w ? "w" : "off"} ${d === today() ? "today" : ""}${invs.length ? (invOver ? " inv-over" : " inv-due") : ""}" data-day="${d}" ${admin ? "" : "disabled"} title="${U().fmtDate(d)} · ${w ? t("cal.workday") : t("cal.off")}${v.inNet ? " · +" + M(v.inNet) : ""}${v.outNet ? " · −" + M(v.outNet) : ""}${v.scheduled ? " · " + t("cal.scheduled") + " " + M(v.scheduled) : ""}${invTip}"><span>${Number(d.slice(8))}</span>${v.inNet || v.outNet || v.scheduled || invs.length ? `<i class="dots">${v.inNet ? '<em class="in"></em>' : ""}${v.outNet ? '<em class="out"></em>' : ""}${v.scheduled ? '<em class="sch"></em>' : ""}${invMark}</i>` : ""}</button>`);
       }
       return `<section class="card cal-m"><div class="card-h"><h3><a href="#/month/${mk}">${esc(U().monthName(mk, "long"))}</a></h3><small class="muted">${E.countWorkdays(a, b, wd)} ${t("dash.workdays")}</small>${admin ? `<button class="btn ghost xs" data-applym="${mk}">${t("cal.applyMonth")}</button>` : ""}</div>
         <div class="cal-grid">${wdn.map((n) => `<span class="h">${n}</span>`).join("")}${cells.join("")}</div>
@@ -489,7 +494,7 @@ window.GA = window.GA || {};
     return `<header class="page-head"><div class="stepper big"><a class="icon-btn" href="#/calendar/${y - 1}">${I("left")}</a><h1>${t("cal.title")} ${label}</h1><a class="icon-btn" href="#/calendar/${y + 1}">${I("right")}</a></div></header>
       ${admin ? `<section class="card pad"><h3>${t("cal.setWeekdays")}</h3><div class="wd-pick">${wdl.map((n, i) => `<label class="chip-chk"><input type="checkbox" data-pat="${i}" ${pat[i] ? "checked" : ""}><span>${esc(n)}</span></label>`).join("")}</div>
         <div class="btn-row"><button class="btn sm" data-applyy>${t("cal.applyYear")}</button><small class="muted">${t("cal.tapHint")}</small></div></section>` : ""}
-      <div class="legend muted small"><span><i class="lgd w"></i>${t("cal.workday")}</span><span><i class="lgd off"></i>${t("cal.off")}</span><span><em class="in"></em>${t("tx.ins")}</span><span><em class="out"></em>${t("tx.outs")}</span><span><em class="sch"></em>${t("cal.scheduled")}</span></div>
+      <div class="legend muted small"><span><i class="lgd w"></i>${t("cal.workday")}</span><span><i class="lgd off"></i>${t("cal.off")}</span><span><em class="in"></em>${t("tx.ins")}</span><span><em class="out"></em>${t("tx.outs")}</span><span><em class="sch"></em>${t("cal.scheduled")}</span><span><em class="inv"></em>${t("inv.dueCal")}</span></div>
       ${[0, 1, 2, 3].map((q) => `<h2 class="section-t">${t("period.q" + (q + 1))}</h2><div class="cal-q">${months.slice(q * 3, q * 3 + 3).map(monthCard).join("")}</div>`).join("")}`;
   }
 

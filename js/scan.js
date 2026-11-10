@@ -203,7 +203,7 @@ window.GA = window.GA || {};
     if (!box) U().modal(`<div class="scan-prog" id="scanProg">${I("scan")}<b id="scanMsg"></b><div class="scan-bar"><i id="scanBar"></i></div><small class="muted">${t("sc.offline")}</small></div>`, "small");
     $("#scanMsg").textContent = msg; if (pct != null) $("#scanBar").style.width = Math.round(pct * 100) + "%";
   }
-  async function start(file, keepPreset) {
+  async function start(file, keepPreset, onResult) {
     if (!file) return;
     if (!/^image\//.test(file.type) && file.type !== "application/pdf" && !/\.(pdf|jpe?g|png|webp|heic)$/i.test(file.name || "")) { U().toast(t("sc.badType"), true); return; }
     const ex = extractors[CFG().extractor] || extractors.local;
@@ -218,7 +218,7 @@ window.GA = window.GA || {};
       const preset = Object.assign({}, keepPreset || {}, toTx({ fields: parsed.fields, rows: parsed.rows, text: out.text, source: out.source, image: out.image }));
       const read = ["gross", "date", "desc"].filter((k) => preset._scan.conf[k] > 0).length;
       if (!read && !(out.text || "").trim()) U().toast(t("sc.nothing"), true);
-      U().closeModal(); GA.acc.txForm(null, preset);
+      U().closeModal(); if (typeof onResult === "function") onResult(preset); else GA.acc.txForm(null, preset);
     } catch (e) {
       U().closeModal(); U().toast(e.code === "scanFile" ? t("sc.needHttp") : e.code === "scanImage" ? t("sc.badType") : t("sc.fail"), true);
       if (window.console) console.warn("scan", e);
@@ -228,8 +228,8 @@ window.GA = window.GA || {};
   const buttons = (cls) => `<div class="scan-row ${cls || ""}">
       <label class="btn scan-btn" data-scanbtn="camera">${I("camera")}<span>${t("sc.camera")}</span><input type="file" accept="image/*" capture="environment" data-scan hidden></label>
       <label class="btn scan-btn" data-scanbtn="file">${I("file")}<span>${t("sc.file")}</span><input type="file" accept="image/*,application/pdf,.pdf" data-scan hidden></label></div>`;
-  function bindInputs(root, presetFn) {
-    root.querySelectorAll("input[data-scan]").forEach((inp) => inp.addEventListener("change", () => { const f = inp.files && inp.files[0]; inp.value = ""; if (f) start(f, presetFn ? presetFn() : null); }));
+  function bindInputs(root, presetFn, onResult) {
+    root.querySelectorAll("input[data-scan]").forEach((inp) => inp.addEventListener("change", () => { const f = inp.files && inp.files[0]; inp.value = ""; if (f) start(f, presetFn ? presetFn() : null, onResult); }));
   }
   function sheet() {
     const m = U().modal(`${U().mhead(t("sc.title"))}<p class="muted small">${t("sc.intro")}</p>${buttons("big")}<p class="muted small">${t("sc.privacy")}</p>`, "small");

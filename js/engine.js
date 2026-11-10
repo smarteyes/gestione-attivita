@@ -249,6 +249,34 @@
     return { inNet: sum(I, "net"), outNet: sum(O, "net"), scheduled: sum(I.filter((t) => !t.paid), "gross") - sum(O.filter((t) => !t.paid), "gross") };
   };
 
+
+  /* ---------- Fatture da pagare ---------- */
+  E.invoiceRemaining = function (inv) {
+    const rem = Math.round((num(inv && inv.gross) - num(inv && inv.paidAmount)) * 100) / 100;
+    return rem > 0 ? rem : 0;
+  };
+  E.invoiceDueState = function (inv, today) {
+    if (!inv) return "open";
+    if (inv.status === "paid" || E.invoiceRemaining(inv) <= 0.004) return "paid";
+    const due = inv.dueDate || "";
+    if (due && today && due < today) return "overdue";
+    if (due && today && due <= E.addDays(today, 7)) return "soon";
+    return "open";
+  };
+  E.invoiceTotals = function (list, today) {
+    const rows = list || [];
+    let toPay = 0, overdue = 0, nOverdue = 0, nOpen = 0, nSoon = 0;
+    rows.forEach((inv) => {
+      const st = E.invoiceDueState(inv, today);
+      if (st === "paid") return;
+      const rem = E.invoiceRemaining(inv);
+      nOpen++; toPay += rem;
+      if (st === "overdue") { nOverdue++; overdue += rem; }
+      if (st === "soon") nSoon++;
+    });
+    return { toPay: Math.round(toPay * 100) / 100, overdue: Math.round(overdue * 100) / 100, nOverdue, nOpen, nSoon };
+  };
+
   if (typeof module !== "undefined" && module.exports) module.exports = E;
   else { root.GA = root.GA || {}; root.GA.engine = E; }
 })(typeof window !== "undefined" ? window : globalThis);

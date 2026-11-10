@@ -98,7 +98,7 @@
   }
 
   /* ---------- GUSCIO ---------- */
-  const NAV = [["home", "home"], ["closing", "moon"], ["tx", "list"], ["month", "chart"], ["year", "star"], ["accounts", "wallet"], ["calendar", "calendar"], ["events", "event"], ["settings", "settings"]];
+  const NAV = [["home", "home"], ["closing", "moon"], ["tx", "list"], ["month", "chart"], ["year", "star"], ["accounts", "wallet"], ["invoices", "receipt"], ["calendar", "calendar"], ["events", "event"], ["settings", "settings"]];
   const navHref = (k) => (k === "month" ? "#/month/" + E.today().slice(0, 7) : k === "year" ? "#/year/" + E.fiscalYearStart(E.today(), S.book.fyStart).slice(0, 4) : "#/" + k);
   function shell(view, content) {
     const company = S.book.company;
@@ -116,7 +116,7 @@
         ${[["home", "home"], ["tx", "list"]].map(([k, ic]) => `<a href="${navHref(k)}" class="${view === k ? "active" : ""}">${I(ic)}<span>${t("nav." + k)}</span></a>`).join("")}
         <span class="tab-gap"></span>
         <a href="${navHref("month")}" class="${view === "month" ? "active" : ""}">${I("chart")}<span>${t("nav.month")}</span></a>
-        <a href="#/more" class="${["more", "year", "accounts", "calendar", "events", "event", "settings", "users", "profile"].includes(view) ? "active" : ""}">${I("menu")}<span>${t("nav.more")}</span></a>
+        <a href="#/more" class="${["more", "year", "accounts", "invoices", "calendar", "events", "event", "settings", "users", "profile"].includes(view) ? "active" : ""}">${I("menu")}<span>${t("nav.more")}</span></a>
       </nav></div>`;
     bindLang(app());
     $("#logout").onclick = logout;
@@ -124,7 +124,7 @@
   }
   async function logout() { await api.auth.logout(); S.user = null; S.loaded = false; if (location.hash !== "#/login") location.hash = "#/login"; else render(); }
   function viewMore() {
-    const items = [["year", "star"], ["accounts", "wallet"], ["calendar", "calendar"], ["events", "event"], ["settings", "settings"]].concat(isAdmin() ? [["users", "people"]] : []).concat([["profile", "user"]]);
+    const items = [["year", "star"], ["accounts", "wallet"], ["invoices", "receipt"], ["calendar", "calendar"], ["events", "event"], ["settings", "settings"]].concat(isAdmin() ? [["users", "people"]] : []).concat([["profile", "user"]]);
     return `<header class="page-head"><h1>${t("nav.more")}</h1></header>
       <div class="menu-list card">${items.map(([k, ic]) => `<a href="${navHref(k)}">${I(ic)}<span>${t("nav." + k)}</span>${I("right", "chev")}</a>`).join("")}</div>
       <div class="menu-list card"><div class="row-item">${I("globe")}<span>${t("set.language")}</span>${langSelect()}</div><button class="row-item" id="logout3">${I("logout")}<span>${t("nav.logout")}</span></button></div>`;
@@ -133,10 +133,10 @@
   /* ---------- DATI ---------- */
   async function loadData() {
     S.loaded = true;
-    const [dir, book, accounts, departments, vatRates, dedRates, categories, tx, transfers, clients, payments, events] = await Promise.all([
+    const [dir, book, accounts, departments, vatRates, dedRates, categories, tx, transfers, clients, payments, events, invoices] = await Promise.all([
       api.users.directory(), api.book.get(), api.accounts.list(), api.departments.list(), api.vatRates.list(), api.dedRates.list(), api.categories.list(),
-      api.transactions.list(), api.transfers.list(), api.clients.list(), api.payments.list(), api.events.list()]);
-    Object.assign(S, { dir, book, accounts, departments, vatRates, dedRates, categories, transfers, clients, payments });
+      api.transactions.list(), api.transfers.list(), api.clients.list(), api.payments.list(), api.events.list(), api.invoices.list()]);
+    Object.assign(S, { dir, book, accounts, departments, vatRates, dedRates, categories, transfers, clients, payments, invoices });
     S.tx = E.enrich(tx, S).sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || "").localeCompare(a.createdAt || ""));
     S.events = events.map((e) => GA.computeEvent(e, payments));
     S.settings = { currency: book.currency }; // usato dal modulo Eventi
@@ -223,6 +223,7 @@
       case "month": html = GA.acc.viewMonth(parts[1]); break;
       case "year": html = GA.acc.viewYear(parts[1]); break;
       case "calendar": html = GA.acc.viewCalendar(parts[1]); break;
+      case "invoices": html = GA.invoicesUI.view(parts); break;
       case "events": case "event": html = GA.events.view(parts); break;
       case "settings": html = GA.settingsUI.view(parts[1]); break;
       case "users": if (!isAdmin()) { location.hash = "#/home"; return; } html = await viewUsers(); break;
@@ -237,6 +238,7 @@
     const main = $("#main");
     if (view === "setup") { GA.settingsUI.bind(main); const d = $("#wizDone", main); if (d) d.onclick = async () => { await api.book.set({ setupDone: true }); await loadData(); location.hash = "#/home"; }; }
     if (view === "users") bindUsers(main);
+    if (view === "invoices") GA.invoicesUI.bind(main);
     if (view === "events" || view === "event") GA.events.bind(main, parts);
     if (view === "settings") GA.settingsUI.bind(main);
     if (["home", "tx", "accounts", "month", "year", "calendar", "closing"].includes(view)) GA.acc.bind(main, view, parts);

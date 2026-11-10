@@ -23,12 +23,13 @@ window.GA = window.GA || {};
 
   // campi salvati di ogni collezione (le formule sono nel motore, mai salvate)
   const FIELDS = {
-    transactions: ["type", "paid", "ref", "date", "accountId", "deptId", "categoryId", "desc", "gross", "vatId", "vatManual", "dedId", "notes", "recurrenceId", "paymentId", "eventId", "closing", "attachmentId"],
+    transactions: ["type", "paid", "ref", "date", "accountId", "deptId", "categoryId", "desc", "gross", "vatId", "vatManual", "dedId", "notes", "recurrenceId", "paymentId", "eventId", "closing", "attachmentId", "invoiceId"],
     transfers: ["date", "from", "to", "amount", "notes"],
     accounts: ["name", "kind", "icon", "opening", "manual", "active"],
     departments: ["name"], vatRates: ["name", "pct", "manual"], dedRates: ["name", "pct"],
     categories: ["type", "name", "icon", "active", "need"],
     clients: GA.clientSchema.map((f) => f.key), events: GA.eventSchema.filter((k) => k !== "code"), payments: GA.paymentSchema,
+    invoices: ["supplier", "number", "invoiceDate", "dueDate", "gross", "vat", "vatId", "vatManual", "dedId", "categoryId", "accountId", "notes", "attachmentId", "status", "paidDate", "paidAccountId", "paidAmount", "txId", "payTxIds"],
   };
   const MASTER = ["accounts", "departments", "vatRates", "dedRates", "categories"]; // solo admin
 
@@ -62,7 +63,7 @@ window.GA = window.GA || {};
     let session = read("session", null);
     const files = opt.files || FileStore(ns);
     const withFiles = (c) => Object.assign({}, c, { remove: async (id) => { const t = read("transactions", []).find((x) => x.id === id); await c.remove(id); if (t && t.attachmentId) await files.remove(t.attachmentId); } });
-    const gcFiles = async () => { const used = new Set(read("transactions", []).map((x) => x.attachmentId).filter(Boolean)); for (const f of await files.all()) if (!used.has(f.id) && Date.now() - (f.at || 0) > 864e5) await files.remove(f.id); };
+    const gcFiles = async () => { const used = new Set([].concat(read("transactions", []).map((x) => x.attachmentId), read("invoices", []).map((x) => x.attachmentId)).filter(Boolean)); for (const f of await files.all()) if (!used.has(f.id) && Date.now() - (f.at || 0) > 864e5) await files.remove(f.id); };
     const users = () => read("users", []);
     const col = (n) => read(n, []);
     const seq = (k, p) => { const n = read("seq_" + k, 0) + 1; write("seq_" + k, n); return p + String(n).padStart(4, "0"); };
@@ -88,7 +89,7 @@ window.GA = window.GA || {};
       const D = GA.defaults;
       write("book", D.book(lang)); write("accounts", D.accounts(lang)); write("departments", D.departments(lang));
       write("vatRates", D.vatRates(lang)); write("dedRates", D.dedRates()); write("categories", D.categories(lang));
-      ["transactions", "transfers", "clients", "events", "payments"].forEach((k) => write(k, []));
+      ["transactions", "transfers", "clients", "events", "payments", "invoices"].forEach((k) => write(k, []));
     }
     // validazione: nomi unici senza distinzione maiuscole/minuscole (come i confronti di Excel)
     function validate(name, rec, list) {
@@ -110,6 +111,16 @@ window.GA = window.GA || {};
       if (name === "clients" && !String(rec.name || "").trim()) throw err("required");
       if (name === "events") { if (!String(rec.title || "").trim()) throw err("required"); rec.total = num(rec.total); }
       if (name === "payments") { rec.amount = num(rec.amount); if (!(rec.amount > 0)) throw err("amount"); }
+      if (name === "invoices") {
+        rec.supplier = String(rec.supplier || "").trim(); if (!rec.supplier) throw err("required");
+        if (!rec.invoiceDate || !/^\d{4}-\d{2}-\d{2}$/.test(rec.invoiceDate)) throw err("date");
+        if (!rec.dueDate || !/^\d{4}-\d{2}-\d{2}$/.test(rec.dueDate)) throw err("date");
+        rec.gross = num(rec.gross); rec.vat = num(rec.vat); rec.vatManual = num(rec.vatManual); rec.paidAmount = num(rec.paidAmount);
+        if (!(rec.gross > 0)) throw err("amount");
+        if (rec.paidAmount < 0) rec.paidAmount = 0;
+        if (rec.paidAmount > rec.gross) rec.paidAmount = rec.gross;
+        rec.status = rec.paidAmount >= rec.gross - 0.004 ? "paid" : "open";
+      }
     }
     function inUse(name, id) {
       const tx = col("transactions");
@@ -230,8 +241,11 @@ window.GA = window.GA || {};
         collect: async (id, accountId) => { const u = reqU(); return saveIn("transactions", { id, paid: true, accountId }, u); },
         // inserimento multiplo (ricorrenze, import): tutto o niente
         bulk: async (recs) => { const u = reqU(); const l = col("transactions"); const out = recs.map((r) => { const c = pick(r, FIELDS.transactions); validate("transactions", c, l); return Object.assign({ id: uid(), createdBy: u.id, createdAt: now(), updatedAt: now() }, c); }); write("transactions", l.concat(out)); return out.length; },
-        togglePaid: async (id) => { const u = reqU(); const l = col("transactions"); const t = l.find((x) => x.id === id); if (!t) throw err("notfound"); if (!own(u, t)) throw err("perm"); t.paid = !t.paid; t.updatedAt = now(); write("transactions", l); return t; },
-        remove: async (id) => { const u = reqU(); const l = col("transactions"); const t = l.find((x) => x.id === id); if (!t) return; if (!own(u, t)) throw err("perm"); write("transactions", l.filter((x) => x.id !== id)); if (t.paymentId) { const ps = col("payments"); const p = ps.find((x) => x.id === t.paymentId); if (p) { p.txId = ""; write("payments", ps); } } },
+        togglePaid: async (id) => { const u = reqU(); const l = col("transactions"); const t = l.find((x) => x.id === id); if (!t) throw err("notfound"); if (!own(u, t)) throw err("perm"); t.paid = !t.paid; t.updatedAt = now(); write("transactions", l);
+          if (t.invoiceId) { const invs = col("invoices"); const inv = invs.find((x) => x.id === t.invoiceId); if (inv && inv.txId === id) { if (t.paid) { inv.paidAmount = num(inv.gross); inv.status = "paid"; inv.paidDate = t.date; inv.paidAccountId = t.accountId; } else { inv.paidAmount = Math.max(0, num(inv.paidAmount) - num(t.gross)); inv.status = "open"; inv.paidDate = ""; } inv.updatedAt = now(); write("invoices", invs); } }
+          return t; },
+        remove: async (id) => { const u = reqU(); const l = col("transactions"); const t = l.find((x) => x.id === id); if (!t) return; if (!own(u, t)) throw err("perm"); write("transactions", l.filter((x) => x.id !== id)); if (t.paymentId) { const ps = col("payments"); const p = ps.find((x) => x.id === t.paymentId); if (p) { p.txId = ""; write("payments", ps); } }
+          if (t.invoiceId) { const invs = col("invoices"); const inv = invs.find((x) => x.id === t.invoiceId); if (inv) { if (inv.txId === id) inv.txId = ""; if (inv.payTxIds) inv.payTxIds = String(inv.payTxIds).split(",").filter((x) => x && x !== id).join(","); invs[invs.findIndex((x) => x.id === inv.id)] = inv; write("invoices", invs); } } },
       }),
       transfers: crud("transfers"),
       clients: crud("clients"),
@@ -252,6 +266,75 @@ window.GA = window.GA || {};
         remove: async (id, alsoEntry) => { const u = reqU(); const p = col("payments").find((x) => x.id === id); if (!p) return; if (!own(u, p)) throw err("perm"); if (alsoEntry && p.txId) write("transactions", col("transactions").filter((t) => t.id !== p.txId)); write("payments", col("payments").filter((x) => x.id !== id)); },
       },
       // allegati: { id, type, name, dataUrl, w, h, size, at }
+
+      invoices: (function () {
+        const descOf = (inv) => [inv.number ? ("Ft. " + inv.number) : "", inv.supplier].filter(Boolean).join(" · ") || "Fattura";
+        const todaySafe = () => (GA.engine && GA.engine.today) ? GA.engine.today() : now().slice(0, 10);
+        const putTx = (txs, rec, u, id) => {
+          if (id) {
+            const i = txs.findIndex((x) => x.id === id);
+            if (i >= 0) { const n = Object.assign({}, txs[i], rec, { id, updatedAt: now(), updatedBy: u.id }); validate("transactions", n, txs); txs[i] = n; return n.id; }
+          }
+          const n = Object.assign({ id: uid(), createdBy: u.id, createdAt: now(), updatedAt: now() }, rec);
+          validate("transactions", n, txs); txs.push(n); return n.id;
+        };
+        const baseRec = (inv, gross, paid, date, accountId) => ({
+          type: "out", paid: !!paid, date: date, accountId: accountId || inv.accountId,
+          categoryId: inv.categoryId || "", desc: descOf(inv), gross: gross, vatId: inv.vatId, vatManual: inv.vatManual || 0,
+          dedId: inv.dedId || "", notes: inv.notes || "", ref: inv.number || "", attachmentId: inv.attachmentId || "", invoiceId: inv.id,
+        });
+        const remOf = (inv) => Math.round((num(inv.gross) - num(inv.paidAmount)) * 100) / 100;
+        const persistInv = (inv) => { const list = col("invoices"); const i = list.findIndex((x) => x.id === inv.id); if (i >= 0) list[i] = inv; else list.push(inv); write("invoices", list); return inv; };
+        const syncPlanned = (inv, u) => {
+          const txs = col("transactions");
+          const rem = remOf(inv);
+          if (rem > 0.004) {
+            inv.txId = putTx(txs, baseRec(inv, rem, false, inv.dueDate || inv.invoiceDate, inv.accountId), u, inv.txId);
+            write("transactions", txs);
+          } else if (inv.txId) {
+            const t = txs.find((x) => x.id === inv.txId);
+            if (t && !t.paid) { write("transactions", txs.filter((x) => x.id !== inv.txId)); inv.txId = ""; }
+          }
+          return persistInv(inv);
+        };
+        return {
+          list: async () => { reqU(); return col("invoices"); },
+          save: async (rec) => { const u = reqU(); const inv = saveIn("invoices", rec, u); return syncPlanned(inv, u); },
+          remove: async (id) => {
+            const u = reqU(); const inv = col("invoices").find((x) => x.id === id); if (!inv) return; if (!own(u, inv)) throw err("perm");
+            let txs = col("transactions");
+            if (inv.txId) { const t = txs.find((x) => x.id === inv.txId); if (t && !t.paid) txs = txs.filter((x) => x.id !== inv.txId); }
+            write("transactions", txs);
+            write("invoices", col("invoices").filter((x) => x.id !== id));
+          },
+          markPaid: async (id, p) => {
+            const u = reqU(); const inv = col("invoices").find((x) => x.id === id); if (!inv) throw err("notfound"); if (!own(u, inv)) throw err("perm");
+            const rem = remOf(inv); if (rem <= 0.004) return inv;
+            const date = (p && p.date) || todaySafe();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw err("date");
+            const accountId = (p && p.accountId) || inv.accountId;
+            let amount = num(p && p.amount) || rem;
+            if (amount <= 0) throw err("amount");
+            if (amount > rem + 0.004) amount = rem;
+            amount = Math.round(amount * 100) / 100;
+            const txs = col("transactions");
+            const full = amount >= rem - 0.004;
+            if (full) {
+              inv.txId = putTx(txs, baseRec(inv, rem, true, date, accountId), u, inv.txId);
+              inv.paidAmount = num(inv.gross); inv.status = "paid"; inv.paidDate = date; inv.paidAccountId = accountId;
+            } else {
+              const pid = putTx(txs, baseRec(inv, amount, true, date, accountId), u, null);
+              inv.payTxIds = [inv.payTxIds, pid].filter(Boolean).join(",").replace(/^,|,$/g, "");
+              inv.paidAmount = Math.round((num(inv.paidAmount) + amount) * 100) / 100;
+              inv.txId = putTx(txs, baseRec(inv, remOf(inv), false, inv.dueDate || inv.invoiceDate, inv.accountId), u, inv.txId);
+              inv.status = "open";
+            }
+            write("transactions", txs);
+            inv.updatedAt = now(); inv.updatedBy = u.id;
+            return persistInv(inv);
+          },
+        };
+      })(),
       attachments: {
         put: async (rec) => { reqU(); const r = Object.assign({ id: uid(), at: Date.now() }, pick(rec, ["id", "type", "name", "dataUrl", "w", "h", "size", "source"])); if (!/^data:(image\/(jpeg|png|webp)|application\/pdf);base64,/.test(r.dataUrl || "")) throw err("format"); gcFiles().catch(() => {}); return files.put(r); },
         get: async (id) => { reqU(); return files.get(id); },
@@ -259,8 +342,8 @@ window.GA = window.GA || {};
         gc: gcFiles,
       },
       admin: {
-        exportAll: async () => { reqA(); const o = { format: "gestione-attivita", version: 3, exportedAt: now(), users: users(), app: app(), book: book() }; ["accounts", "departments", "vatRates", "dedRates", "categories", "transactions", "transfers", "clients", "events", "payments"].forEach((k) => (o[k] = col(k))); o.seq = { ev: read("seq_ev", 0), rc: read("seq_rc", 0) }; o.attachments = await files.all(); return o; },
-        importAll: async (d) => { reqA(); if (!d || d.format !== "gestione-attivita" || !Array.isArray(d.users) || !d.book) throw err("format"); write("users", d.users); write("app", d.app || {}); write("book", d.book); ["accounts", "departments", "vatRates", "dedRates", "categories", "transactions", "transfers", "clients", "events", "payments"].forEach((k) => write(k, d[k] || [])); write("seq_ev", (d.seq || {}).ev || 0); write("seq_rc", (d.seq || {}).rc || 0); await files.clear(); for (const f of Array.isArray(d.attachments) ? d.attachments : []) if (f && f.id && /^data:/.test(f.dataUrl || "")) await files.put(f); },
+        exportAll: async () => { reqA(); const o = { format: "gestione-attivita", version: 3, exportedAt: now(), users: users(), app: app(), book: book() }; ["accounts", "departments", "vatRates", "dedRates", "categories", "transactions", "transfers", "clients", "events", "payments", "invoices"].forEach((k) => (o[k] = col(k))); o.seq = { ev: read("seq_ev", 0), rc: read("seq_rc", 0) }; o.attachments = await files.all(); return o; },
+        importAll: async (d) => { reqA(); if (!d || d.format !== "gestione-attivita" || !Array.isArray(d.users) || !d.book) throw err("format"); write("users", d.users); write("app", d.app || {}); write("book", d.book); ["accounts", "departments", "vatRates", "dedRates", "categories", "transactions", "transfers", "clients", "events", "payments", "invoices"].forEach((k) => write(k, d[k] || [])); write("seq_ev", (d.seq || {}).ev || 0); write("seq_rc", (d.seq || {}).rc || 0); await files.clear(); for (const f of Array.isArray(d.attachments) ? d.attachments : []) if (f && f.id && /^data:/.test(f.dataUrl || "")) await files.put(f); },
         // svuota il libro contabile (movimenti, impostazioni → predefinite), mantiene gli utenti
         resetBook: async () => { const a = reqA(); initBook((book() || {}).lang || C.defaultLanguage); await files.clear(); void a; },
         wipeAll: async () => { reqA(); await files.clear(); LS.keys().filter((k) => k.startsWith(ns + ":")).forEach((k) => LS.removeItem(k)); session = null; },
@@ -296,6 +379,7 @@ window.GA = window.GA || {};
       transactions: Object.assign(crud("transactions"), { bulk: (r) => req("POST", "/transactions/bulk", r).then((j) => j.count), togglePaid: (id) => req("POST", `/transactions/${id}/toggle-paid`, {}), saveClosing: (d) => req("POST", "/transactions/closing", d), collect: (id, accountId) => req("POST", `/transactions/${id}/collect`, { accountId }) }),
       transfers: crud("transfers"), clients: crud("clients"), events: crud("events"),
       payments: { list: () => req("GET", "/payments"), save: (r, entry) => (r.id ? req("PUT", "/payments/" + r.id, { payment: r, entry }) : req("POST", "/payments", { payment: r, entry })), remove: (id, alsoEntry) => req("DELETE", `/payments/${id}?entry=${alsoEntry ? 1 : 0}`) },
+      invoices: Object.assign(crud("invoices"), { markPaid: (id, p) => req("POST", `/invoices/${id}/pay`, p || {}) }),
       // foto: il server le salva su disco (limite di dimensione e quota per azienda); get restituisce i metadati e l'indirizzo dell'immagine
       attachments: { put: (rec) => req("POST", "/attachments", rec).then((j) => j.id), get: (id) => req("GET", "/attachments/" + id), remove: (id) => req("DELETE", "/attachments/" + id), gc: async () => {} },
       admin: { exportAll: () => req("GET", "/admin/export"), importAll: (d) => req("POST", "/admin/import", d), resetBook: () => req("POST", "/admin/reset-book", {}), wipeAll: () => req("POST", "/admin/wipe", {}), audit: (n) => req("GET", "/admin/audit?limit=" + (n || 100)) },
@@ -319,7 +403,7 @@ window.GA = window.GA || {};
       if (j && typeof j === "object" && !Array.isArray(j) && typeof j.error === "string") { if (j.error === "auth") { setToken(""); setMe(null); } throw err(j.error); }
       return j;
     }
-    const NS = "c", COLLS = ["accounts", "departments", "vatRates", "dedRates", "categories", "transactions", "transfers", "clients", "events", "payments"], KVS = ["book", "app", "seq_ev", "seq_rc"];
+    const NS = "c", COLLS = ["accounts", "departments", "vatRates", "dedRates", "categories", "transactions", "transfers", "clients", "events", "payments", "invoices"], KVS = ["book", "app", "seq_ev", "seq_rc"];
     const mem = new Map(); const store = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k), keys: () => [...mem.keys()] };
     const K = (k) => NS + ":" + k, get = (k, d) => { const v = store.getItem(K(k)); return v == null ? d : JSON.parse(v); }, put = (k, v) => store.setItem(K(k), JSON.stringify(v));
     const files = { put: async (rec) => (await rpc("files.put", rec)).id, get: (id) => rpc("files.get", { id }), remove: (id) => rpc("files.remove", { id }), all: async () => [], clear: async () => {} };
@@ -375,7 +459,7 @@ window.GA = window.GA || {};
       book: W(core.book),
       app: { get: async () => (token ? wrap(core.app.get, false)() : rpc("status").then((s) => ({ allowSelfRegistration: !!s.allowSelfRegistration }))), set: wrap(core.app.set, true) },
       accounts: W(core.accounts), departments: W(core.departments), vatRates: W(core.vatRates), dedRates: W(core.dedRates), categories: W(core.categories),
-      transactions: W(core.transactions), transfers: W(core.transfers), clients: W(core.clients), events: W(core.events), payments: W(core.payments),
+      transactions: W(core.transactions), transfers: W(core.transfers), clients: W(core.clients), events: W(core.events), payments: W(core.payments), invoices: W(core.invoices),
       attachments: { put: (rec) => rpc("files.put", pick(rec || {}, ["id", "type", "name", "dataUrl", "w", "h"])).then((j) => j.id), get: (id) => rpc("files.get", { id }), remove: (id) => rpc("files.remove", { id }), gc: async () => {}, usage: () => rpc("files.usage") },
       admin: {
         exportAll: async () => {
