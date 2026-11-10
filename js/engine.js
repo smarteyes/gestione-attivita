@@ -258,6 +258,42 @@
   };
 
 
+  /* ---------- Chiusura serata: canale interno "unpaid" (etichetta: Altro incasso) ---------- */
+  E.CLOSING_UNPAID_OLD_NAMES = ["Non riscosso", "Not collected", "未收款"];
+  E.closingUnpaidName = function (lang) {
+    return ({ it: "Altro incasso", en: "Other takings", zh: "其他收入" }[lang] || "Altro incasso");
+  };
+  /* Righe Non riscosso ancora da riscuotere → pagate, sullo stesso conto se valido, altrimenti il conto del canale / il primo. Idempotente. */
+  E.migrateClosingUnpaid = function (txs, opt) {
+    opt = opt || {};
+    const accs = opt.accounts || [];
+    const known = new Set(accs.map((a) => a.id));
+    const defAcc = opt.defaultAccountId || (accs.find((a) => a.active !== false) || accs[0] || {}).id || "";
+    const can = opt.canEdit || (() => true);
+    let changed = 0;
+    const transactions = (txs || []).map((t) => {
+      if (!t || t.closing !== "unpaid" || t.paid) return t;
+      if (!can(t)) return t;
+      const accountId = (t.accountId && known.has(t.accountId)) ? t.accountId : defAcc;
+      changed++;
+      return Object.assign({}, t, { paid: true, accountId });
+    });
+    return { transactions, changed };
+  };
+  /* Rinomina solo le categorie ancora con il nome predefinito vecchio; i nomi personalizzati restano. */
+  E.renameClosingUnpaidCategory = function (cats, lang) {
+    const OLD = new Set(E.CLOSING_UNPAID_OLD_NAMES);
+    const name = E.closingUnpaidName(lang);
+    let changed = 0;
+    const categories = (cats || []).map((c) => {
+      if (!c || (c.type && c.type !== "in")) return c;
+      if (!OLD.has(c.name) || c.name === name) return c;
+      changed++;
+      return Object.assign({}, c, { name });
+    });
+    return { categories, changed };
+  };
+
   /* ---------- Fatture da pagare ---------- */
   E.invoiceRemaining = function (inv) {
     const rem = Math.round((num(inv && inv.gross) - num(inv && inv.paidAmount)) * 100) / 100;

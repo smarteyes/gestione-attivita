@@ -62,15 +62,10 @@ window.GA = window.GA || {};
     const map = {};
     txs.forEach((x) => {
       if (!x.date) return;
-      const m = map[x.date] || (map[x.date] = { in: 0, out: 0, unpaidIn: 0 });
+      const m = map[x.date] || (map[x.date] = { in: 0, out: 0 });
       const g = Number(x.gross) || 0;
-      if (x.type === "in") {
-        // verde: incassi pagati + Non riscosso / entrate pianificate
-        m.in += g;
-        if (!x.paid) m.unpaidIn += g;
-      } else if (x.paid) {
-        m.out += g;
-      }
+      if (x.type === "in") m.in += g; // pagate + pianificate
+      else if (x.paid) m.out += g;
     });
     return map;
   }
@@ -81,7 +76,7 @@ window.GA = window.GA || {};
     const cells = [];
     for (let i = 0; i < 42; i++) {
       const st = stats[cur] || { in: 0, out: 0 };
-      cells.push({ iso: cur, n: Number(cur.slice(8)), inMonth: cur.startsWith(ym), today: cur === today(), inn: st.in, out: st.out, unpaidIn: st.unpaidIn || 0 });
+      cells.push({ iso: cur, n: Number(cur.slice(8)), inMonth: cur.startsWith(ym), today: cur === today(), inn: st.in, out: st.out });
       cur = E.addDays(cur, 1);
     }
     return cells;
@@ -121,7 +116,7 @@ window.GA = window.GA || {};
     const bal = E.balances(S().accounts, S().tx, S().transfers);
     const avail = bal.reduce((s, r) => s + (r.kind === "card" ? -r.balance : r.balance), 0);
     const goalTxt = m.goal ? (m.goalDiff > 0 ? t("dash.goalMissing", { v: M0(m.goalDiff) }) : t("dash.goalAbove", { v: M0(-m.goalDiff) })) : t("dash.noGoal");
-    const todayCl = closingRows(today()); const toCol = toCollect();
+    const todayCl = closingRows(today());
     const sched = m.scheduledMonth.slice(0, 5); const recent = S().tx.filter((x) => x.date <= today()).slice(0, 8);
     return `<header class="home-head"><div><span class="brand-script">${esc(typeof GA.config.brand.appName === "string" ? GA.config.brand.appName : GA.config.brand.appName[GA.i18n.lang] || GA.config.brand.appName.it)}</span><small class="muted">${esc(B.company || "")}</small><h1>${esc(U().monthName(mk))}</h1></div><a class="btn ghost sm" href="#/month/${mk}">${t("dash.seeMonth")}${I("right")}</a></header>
       <section class="hero card">
@@ -138,8 +133,6 @@ window.GA = window.GA || {};
         ${kpi(t("dash.profit"), `<span class="${signCls(m.profitGross)}">${M(m.profitGross)}</span>`, m.goal ? `${t("dash.profitNet")} ${M(m.profit)} · ${goalTxt}` : goalTxt, m.goal ? bar(m.goalPct) : "")}
         ${kpi(t("dash.vat"), M(Math.abs(m.vatBalance)), m.vatBalance >= 0 ? t("dash.vatPay") : t("dash.vatRecover"))}
       </div>
-      ${toCol.length ? `<section class="card collect-card"><div class="card-h"><h3>${t("cl.toCollect")}</h3><b id="toCollectTot">${M(toCol.reduce((s, x) => s + x.gross, 0))}</b></div>
-        <div class="txlist">${toCol.map((x) => `<div class="tx collect"><span class="tx-ic in">${I("receipt")}</span><span class="tx-main"><b>${esc(x.notes || x.desc || t("cl.Unpaid"))}</b><small>${esc(U().fmtDate(x.date, { weekday: "short", day: "numeric", month: "short" }))}</small></span><span class="tx-amt in"><b>${M(x.gross)}</b></span><button class="btn sm" data-collect="${x.id}" ${canEdit(x) ? "" : "disabled"}>${I("check", "xs")}<span>${t("cl.collect")}</span></button></div>`).join("")}</div></section>` : ""}
       <div class="grid2">
         <section class="card"><div class="card-h"><h3>${t("dash.scheduled")}</h3><small class="muted">${M(m.scheduledMonth.reduce((s, x) => s + x.gross, 0))}</small></div>
           ${sched.length ? `<div class="txlist">${sched.map((x) => txItem(x, true)).join("")}</div>` : `<p class="empty">${t("m.empty")}</p>`}</section>
@@ -152,24 +145,22 @@ window.GA = window.GA || {};
   function deltaTxt(ratio, lbl, inverse) { const d = ratio - 1; const good = inverse ? d <= 0 : d >= 0; return `<span class="delta ${good ? "up" : "down"}">${d >= 0 ? "▲" : "▼"} ${U().pct(Math.abs(d), 1)}</span> ${lbl} ${t("dash.perDay")}`; }
 
 
-  /* ---------- CHIUSURA SERATA: Contanti / POS / Non riscosso sempre in vista ---------- */
+  /* ---------- CHIUSURA SERATA: Contanti / POS / Altro incasso sempre in vista ---------- */
   const CHN = () => GA.closingChannels;
   const defDept = () => S()._clDept || (S().departments[0] || {}).id || "";
   function closingRows(date, dept) { const d = dept == null ? defDept() : dept; return S().tx.filter((x) => x.closing && x.date === date && (x.deptId || "") === d); }
-  function toCollect() { return S().tx.filter((x) => x.type === "in" && x.closing === "unpaid" && !x.paid).sort((a, b) => a.date.localeCompare(b.date)); }
   const chLabel = (K) => { const c = catOf(S().book["closingCat" + K]); return c ? c.name : t("cl." + K); };
   const plainVat = () => S().vatRates.filter((v) => !v.manual);
   function viewClosing(parts) {
     const B = S().book, date = /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "") ? parts[1] : today(), dept = defDept();
     const ex = closingRows(date, dept), ro = ex.some((x) => !canEdit(x));
     const defVat = (plainVat().find((v) => v.id === B.vatDefaultIn) || plainVat().slice(-1)[0] || {}).id;
-    const rows = CHN().map(([ch, K, ic]) => { const o = ex.find((x) => x.closing === ch) || {}; const acc = accOf(ch === "unpaid" && o.id ? o.accountId : B["closingAcc" + K]);
+    const rows = CHN().map(([ch, K, ic]) => { const o = ex.find((x) => x.closing === ch) || {}; const acc = accOf(B["closingAcc" + K]);
       return `<section class="card cl-row ${ch}" data-ch="${ch}">
-        <div class="cl-top"><span class="tx-ic in">${I(ic)}</span><span class="grow"><b>${esc(chLabel(K))}</b><small>${ch === "unpaid" ? (o.id && o.paid ? `${I("check", "xs")} ${t("cl.collected")} · ${esc(acc ? acc.name : "")}` : t("cl.toCollect")) : esc(acc ? acc.name : "")}</small></span></div>
+        <div class="cl-top"><span class="tx-ic in">${I(ic)}</span><span class="grow"><b>${esc(chLabel(K))}</b><small>${esc(acc ? acc.name : "")}</small></span></div>
         <div class="cl-in"><label><span class="sr">${t("tx.gross")}</span><input type="number" inputmode="decimal" step="0.01" min="0" name="g_${ch}" placeholder="0,00" value="${o.gross != null ? esc(o.gross) : ""}" ${ro ? "disabled" : ""}></label>
           <label><span class="sr">${t("tx.vat")}</span><select name="v_${ch}" ${ro ? "disabled" : ""}>${plainVat().map((v) => `<option value="${v.id}" ${(o.vatId || defVat) === v.id ? "selected" : ""}>${esc(v.name)}</option>`).join("")}</select></label></div>
-        <div class="cl-calc" id="calc_${ch}"></div>
-        ${ch === "unpaid" && !(o.id && o.paid) ? `<p class="hint small">${t("cl.unpaidHint")}</p>` : ""}</section>`; }).join("");
+        <div class="cl-calc" id="calc_${ch}"></div></section>`; }).join("");
     return `<header class="page-head"><h1>${t("cl.title")}</h1><div class="head-actions"><button class="btn ghost sm" data-quick="in">${I("plus")}<span>${t("cl.single")}</span></button></div></header>
       <form id="clForm" class="closing narrow-l">
         <div class="cl-head"><div class="cl-date">
@@ -197,18 +188,6 @@ window.GA = window.GA || {};
       catch (x) { $("#clErr", main).textContent = U().errMsg(x); } };
     if (!closingRows(form.date.value).length) setTimeout(() => form.g_cash && form.g_cash.focus(), 50);
   }
-  function collectForm(id) {
-    const x = S().tx.find((r) => r.id === id); if (!x) return; const B = S().book;
-    const def = B.closingAccCash || x.accountId;
-    const m = U().modal(`${U().mhead(t("cl.collectTitle"))}<form id="colForm" class="stack">
-      <p class="hint">${esc(U().fmtDate(x.date))} · ${esc(x.desc || "")} · <b>${M(x.gross)}</b></p>
-      <label>${t("cl.collectTo")}<select name="accountId">${S().accounts.filter((a) => a.active !== false).map((a) => `<option value="${a.id}" ${a.id === def ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select></label>
-      <div class="form-err" id="colErr"></div>
-      <div class="actions"><span class="sp"></span><button type="button" class="btn" data-close>${t("a.cancel")}</button><button class="btn primary">${I("check", "xs")}${t("cl.collect")}</button></div></form>`, "sheet");
-    m.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) U().closeModal(); });
-    $("#colForm", m).onsubmit = async (e) => { e.preventDefault(); try { await api.transactions.collect(id, e.target.accountId.value); U().closeModal(); U().toast(t("m.saved")); U().refresh(); } catch (er) { $("#colErr", m).textContent = U().errMsg(er); } };
-  }
-
   /* ---------- REGISTRO MOVIMENTI ---------- */
   function viewTx(parts) {
     if (parts[1] === "in" || parts[1] === "out") S().f.type = parts[1];
@@ -229,9 +208,8 @@ window.GA = window.GA || {};
         <div class="tx-cal-grid">${cells.map((c) => {
           const cls = ["tx-cal-d", c.inMonth ? "" : "out", c.today ? "today" : "", dsel === c.iso ? "on" : "", (c.inn || c.out) ? "has" : ""].filter(Boolean).join(" ");
           const has = c.inn || c.out;
-          const pend = c.unpaidIn ? " pend" : "";
           const am = has
-            ? `<span class="tx-cal-out">${esc(calAmt(c.out, "out"))}</span><span class="tx-cal-in${pend}" title="${c.unpaidIn ? esc(t("tx.inclUnpaid")) : ""}">${esc(calAmt(c.inn, "in"))}</span>`
+            ? `<span class="tx-cal-out">${esc(calAmt(c.out, "out"))}</span><span class="tx-cal-in">${esc(calAmt(c.inn, "in"))}</span>`
             : `<span class="tx-cal-blank"></span>`;
           return `<button type="button" class="${cls}" data-txday="${c.iso}" ${c.inMonth ? "" : 'data-txm="' + c.iso.slice(0, 7) + '"'}><span class="tx-cal-n">${c.n}</span>${am}</button>`;
         }).join("")}</div>
@@ -554,7 +532,6 @@ window.GA = window.GA || {};
       if ((x = el("[data-tr]"))) return transferForm(x.dataset.tr);
       if ((x = el("[data-quick]"))) return txForm(null, { type: x.dataset.quick });
       if ((x = el("[data-scansheet]"))) return GA.scan.sheet();
-      if ((x = el("[data-collect]"))) return collectForm(x.dataset.collect);
       if (el("[data-new]")) return txForm(null, { type: S().f.type || "in" });
       if (el("[data-rec]")) return recurrenceForm(S().f.type || "out");
       if (el("[data-defvat]")) return defaultVatForm();
@@ -594,5 +571,5 @@ window.GA = window.GA || {};
     drawCharts(view);
   }
 
-  GA.acc = { viewClosing, bindClosing, collectForm, viewHome, viewTx, viewAccounts, viewMonth, viewYear, viewCalendar, bind, txForm, destroyCharts, filteredTx };
+  GA.acc = { viewClosing, bindClosing, viewHome, viewTx, viewAccounts, viewMonth, viewYear, viewCalendar, bind, txForm, destroyCharts, filteredTx };
 })();

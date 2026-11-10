@@ -5,7 +5,7 @@
 window.GA = window.GA || {};
 
 GA.config = {
-  appVersion: 12,  // mostrata in Impostazioni; allineata a sw.js ga-vN e ?v=N in index.html
+  appVersion: 13,  // mostrata in Impostazioni; allineata a sw.js ga-vN e ?v=N in index.html
   // Scansione scontrini/fatture. extractor: "local" = OCR nel browser (offline, Tesseract.js + pdf.js inclusi);
   // "remote" = il backend legge il documento (es. servizio AI di visione) via POST {restBaseUrl}/scan. Nessuna chiamata online finché resta "local".
   scan: { extractor: "local", maxSide: 2000, keepSide: 1400, keepQuality: 0.62, psm: "4" },
@@ -32,7 +32,7 @@ GA.defaults = {
     company: "", fyStart: 1, currency: "EUR", vatDefaultIn: "v22", vatDefaultOut: "v22", dedDefault: "d100",
     prevYearIn: 0, prevYearOut: 0, weekdays: [true, true, true, true, true, false, false], overrides: {}, goals: {},
     eventsAutoEntry: true, eventsEntryAccount: "acc-cash", eventsEntryCategory: "", eventsEntryVat: "v22", setupDone: false, lang,
-    // Chiusura serata: conto e categoria di ogni canale (Contanti / POS / Non riscosso)
+    // Chiusura serata: conto e categoria di ogni canale (Contanti / POS / Altro incasso, chiave interna unpaid)
     closingAccCash: "acc-cash", closingAccPos: "acc-bank", closingAccUnpaid: "acc-cash",
     closingCatCash: "cat-cash", closingCatPos: "cat-pos", closingCatUnpaid: "cat-unpaid",
   }),
@@ -46,9 +46,9 @@ GA.defaults = {
   departments: (lang) => [{ id: "dep-gen", name: { it: "Generale", en: "General", zh: "综合" }[lang] || "Generale" }],
   categories: (lang) => {
     const N = {
-      it: [["Contanti", "cash"], ["POS", "card"], ["Non riscosso", "receipt"], ["Altre entrate", "plus"], ["Affitto", "home", 1], ["Utenze", "bolt", 1], ["Fornitori e merci", "box", 1], ["Personale", "people", 1], ["Tasse e contributi", "receipt", 1], ["Banca e commissioni", "bank", 1], ["Marketing", "megaphone", 0], ["Manutenzione", "wrench", 0], ["Altre spese", "dots", 0]],
-      en: [["Cash", "cash"], ["POS / card", "card"], ["Not collected", "receipt"], ["Other income", "plus"], ["Rent", "home", 1], ["Utilities", "bolt", 1], ["Suppliers & goods", "box", 1], ["Staff", "people", 1], ["Taxes", "receipt", 1], ["Bank & fees", "bank", 1], ["Marketing", "megaphone", 0], ["Maintenance", "wrench", 0], ["Other expenses", "dots", 0]],
-      zh: [["现金", "cash"], ["刷卡 POS", "card"], ["未收款", "receipt"], ["其他收入", "plus"], ["房租", "home", 1], ["水电网", "bolt", 1], ["供应商与货物", "box", 1], ["人员", "people", 1], ["税费", "receipt", 1], ["银行与手续费", "bank", 1], ["市场推广", "megaphone", 0], ["维修保养", "wrench", 0], ["其他支出", "dots", 0]],
+      it: [["Contanti", "cash"], ["POS", "card"], ["Altro incasso", "receipt"], ["Altre entrate", "plus"], ["Affitto", "home", 1], ["Utenze", "bolt", 1], ["Fornitori e merci", "box", 1], ["Personale", "people", 1], ["Tasse e contributi", "receipt", 1], ["Banca e commissioni", "bank", 1], ["Marketing", "megaphone", 0], ["Manutenzione", "wrench", 0], ["Altre spese", "dots", 0]],
+      en: [["Cash", "cash"], ["POS / card", "card"], ["Other takings", "receipt"], ["Other income", "plus"], ["Rent", "home", 1], ["Utilities", "bolt", 1], ["Suppliers & goods", "box", 1], ["Staff", "people", 1], ["Taxes", "receipt", 1], ["Bank & fees", "bank", 1], ["Marketing", "megaphone", 0], ["Maintenance", "wrench", 0], ["Other expenses", "dots", 0]],
+      zh: [["现金", "cash"], ["刷卡 POS", "card"], ["其他收入", "receipt"], ["其他收入", "plus"], ["房租", "home", 1], ["水电网", "bolt", 1], ["供应商与货物", "box", 1], ["人员", "people", 1], ["税费", "receipt", 1], ["银行与手续费", "bank", 1], ["市场推广", "megaphone", 0], ["维修保养", "wrench", 0], ["其他支出", "dots", 0]],
     }[lang] || [];
     const ids = ["cat-cash", "cat-pos", "cat-unpaid", "cat-in-other"];
     return N.map(([name, icon, need], i) => ({ id: ids[i] || "cat-" + (i + 1), type: i < 4 ? "in" : "out", name, icon, active: true, need: need == null ? false : !!need }));

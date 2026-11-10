@@ -406,20 +406,10 @@ details.more > summary { cursor: pointer; color: var(--mute); font-size: .85rem;
 }
 .tx-cal-d .tx-cal-out { color: var(--neg, #b4533c); }
 .tx-cal-d .tx-cal-in { color: #2f7d4f; }
-.tx-cal-d .tx-cal-in.pend::after {
-  content: ""; display: inline-block; width: 4px; height: 4px; margin-left: 2px;
-  border-radius: 50%; box-shadow: inset 0 0 0 1px currentColor; background: transparent;
-  vertical-align: 1px; opacity: .7;
-}
 html.theme-dark .tx-cal-d .tx-cal-in { color: var(--accent); }
 html.theme-paris .tx-cal-d .tx-cal-in { color: #5a7a4a; }
 html.theme-sage .tx-cal-d .tx-cal-in { color: #48521C; }
 html.theme-macaron .tx-cal-d .tx-cal-in { color: #2f7d4f; }
-.tx-cal-d .tx-cal-in.pend::after {
-  content: ""; display: inline-block; width: 4px; height: 4px; margin-left: 2px;
-  border-radius: 50%; box-shadow: inset 0 0 0 1px currentColor; background: transparent;
-  vertical-align: 1px; opacity: .7;
-}
 .tx-cal-d .tx-cal-blank { flex: 1; }
 .tx-cal-d.out { color: var(--mute2); background: transparent; box-shadow: none; }
 .tx-cal-d.out .tx-cal-out, .tx-cal-d.out .tx-cal-in { opacity: .45; }
@@ -428,8 +418,12 @@ html.theme-macaron .tx-cal-d .tx-cal-in { color: #2f7d4f; }
 .tx-cal-d.on { background: var(--accent); color: var(--on-accent); box-shadow: none; }
 .tx-cal-d.on .tx-cal-n { color: var(--on-accent); }
 .tx-cal-d.on .tx-cal-out { color: #ffd2c4; }
-.tx-cal-d.on .tx-cal-in { color: #d9f5c8; }
-html.theme-dark .tx-cal-d.on .tx-cal-in { color: var(--on-accent); opacity: .9; }
+/* specificità >= regole tema, altrimenti in Oliva le entrate restano #48521C su sfondo #48521C */
+html.theme-dark .tx-cal-d.on .tx-cal-in,
+html.theme-paris .tx-cal-d.on .tx-cal-in,
+html.theme-sage .tx-cal-d.on .tx-cal-in,
+html.theme-macaron .tx-cal-d.on .tx-cal-in,
+.tx-cal-d.on .tx-cal-in { color: var(--on-accent); }
 .tx-cal-d:active { filter: brightness(.97); }
 .tx-cal-foot { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 0 2px; }
 .tx-dayhead { position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 12px 8px; background: var(--card); border-bottom: 1px solid var(--line); box-shadow: 0 1px 0 var(--card); }

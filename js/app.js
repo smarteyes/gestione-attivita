@@ -122,7 +122,7 @@
     $("#logout").onclick = logout;
     $("#fab").onclick = quickMenu;
   }
-  async function logout() { await api.auth.logout(); S.user = null; S.loaded = false; if (location.hash !== "#/login") location.hash = "#/login"; else render(); }
+  async function logout() { await api.auth.logout(); S.user = null; S.loaded = false; S._migV13 = false; if (location.hash !== "#/login") location.hash = "#/login"; else render(); }
   function viewMore() {
     const items = [["year", "star"], ["accounts", "wallet"], ["invoices", "receipt"], ["calendar", "calendar"], ["events", "event"], ["settings", "settings"]].concat(isAdmin() ? [["users", "people"]] : []).concat([["profile", "user"]]);
     return `<header class="page-head"><h1>${t("nav.more")}</h1></header>
@@ -133,6 +133,13 @@
   /* ---------- DATI ---------- */
   async function loadData() {
     S.loaded = true;
+    if (!S._migV13 && typeof api.migrateClosingV13 === "function") {
+      try {
+        const mig = await api.migrateClosingV13();
+        S._migV13 = true;
+        void mig;
+      } catch (e) { /* riprova al prossimo caricamento */ }
+    }
     const [dir, book, accounts, departments, vatRates, dedRates, categories, tx, transfers, clients, payments, events, invoices] = await Promise.all([
       api.users.directory(), api.book.get(), api.accounts.list(), api.departments.list(), api.vatRates.list(), api.dedRates.list(), api.categories.list(),
       api.transactions.list(), api.transfers.list(), api.clients.list(), api.payments.list(), api.events.list(), api.invoices.list()]);

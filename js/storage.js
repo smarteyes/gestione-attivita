@@ -216,7 +216,7 @@ window.GA = window.GA || {};
       app: { get: async () => app(), set: async (p) => { reqA(); write("app", Object.assign(app(), p)); return app(); } },
       accounts: crud("accounts"), departments: crud("departments"), vatRates: crud("vatRates"), dedRates: crud("dedRates"), categories: crud("categories"),
       transactions: Object.assign(withFiles(crud("transactions")), {
-        // CHIUSURA SERATA: una Entrata per canale non vuoto (Contanti, POS, Non riscosso) per data + attività.
+        // CHIUSURA SERATA: una Entrata per canale non vuoto (Contanti, POS, Altro incasso) per data + attività.
         // Se la chiusura di quella data esiste già viene aggiornata (niente doppioni); un importo azzerato elimina la riga.
         saveClosing: async (d) => {
           const u = reqU(), b = book(); let txs = col("transactions");
@@ -229,15 +229,14 @@ window.GA = window.GA || {};
           GA.closingChannels.forEach(([ch, K]) => {
             const r = rows[ch] || {}, g = Math.round(num(r.gross) * 100) / 100, old = ex.find((t) => t.closing === ch);
             if (!g) { if (old) txs = txs.filter((t) => t.id !== old.id); return; }
-            const unpaid = ch === "unpaid";
             const rec = { type: "in", date: d.date, deptId: dept, categoryId: b["closingCat" + K] || "", desc, gross: g, vatId: r.vatId || b.vatDefaultIn, vatManual: 0, dedId: "", notes: d.notes || "", closing: ch,
-              paid: unpaid ? (old ? !!old.paid : false) : true, accountId: unpaid && old ? old.accountId : b["closingAcc" + K] || b.closingAccCash || (col("accounts")[0] || {}).id };
+              paid: true, accountId: b["closingAcc" + K] || b.closingAccCash || (col("accounts")[0] || {}).id };
             if (old) { const i = txs.findIndex((t) => t.id === old.id); const n = Object.assign({}, old, rec, { updatedAt: now(), updatedBy: u.id }); validate("transactions", n, txs); txs[i] = n; out.push(n); }
             else { const n = Object.assign({ id: uid(), createdBy: u.id, createdAt: now(), updatedAt: now() }, rec); validate("transactions", n, txs); txs.push(n); out.push(n); }
           });
           write("transactions", txs); return out;
         },
-        // segna come incassata una riga "Non riscosso" (o qualunque entrata pianificata) sul conto scelto
+        // (compatibilità) segna come pagata una riga di chiusura o un'entrata pianificata sul conto scelto
         collect: async (id, accountId) => { const u = reqU(); return saveIn("transactions", { id, paid: true, accountId }, u); },
         // inserimento multiplo (ricorrenze, import): tutto o niente
         bulk: async (recs) => { const u = reqU(); const l = col("transactions"); const out = recs.map((r) => { const c = pick(r, FIELDS.transactions); validate("transactions", c, l); return Object.assign({ id: uid(), createdBy: u.id, createdAt: now(), updatedAt: now() }, c); }); write("transactions", l.concat(out)); return out.length; },
@@ -348,6 +347,27 @@ window.GA = window.GA || {};
         resetBook: async () => { const a = reqA(); initBook((book() || {}).lang || C.defaultLanguage); await files.clear(); void a; },
         wipeAll: async () => { reqA(); await files.clear(); LS.keys().filter((k) => k.startsWith(ns + ":")).forEach((k) => LS.removeItem(k)); session = null; },
       },
+      migrateClosingV13: async () => {
+        const u = reqU();
+        const b = book() || {};
+        const accs = col("accounts");
+        const defAcc = b.closingAccUnpaid || b.closingAccCash || (accs.find((a) => a.active !== false) || accs[0] || {}).id || "";
+        const can = (t) => own(u, t);
+        const txM = (GA.engine && GA.engine.migrateClosingUnpaid) ? GA.engine.migrateClosingUnpaid(col("transactions"), { accounts: accs, defaultAccountId: defAcc, canEdit: can }) : { transactions: col("transactions"), changed: 0 };
+        if (txM.changed) {
+          const stamped = txM.transactions.map((t, i) => {
+            const o = col("transactions")[i];
+            return (o && t !== o) ? Object.assign({}, t, { updatedAt: now(), updatedBy: u.id }) : t;
+          });
+          write("transactions", stamped);
+        }
+        let catChanged = 0;
+        if (u.role === "admin" && GA.engine && GA.engine.renameClosingUnpaidCategory) {
+          const catM = GA.engine.renameClosingUnpaidCategory(col("categories"), b.lang || (GA.i18n && GA.i18n.lang) || "it");
+          if (catM.changed) { write("categories", catM.categories); catChanged = catM.changed; }
+        }
+        return { transactions: txM.changed, categories: catChanged };
+      },
       _initBook: initBook, _reloadSession: () => { session = read("session", null); },
     };
   }
@@ -377,6 +397,7 @@ window.GA = window.GA || {};
       book: { get: () => req("GET", "/book"), set: (p) => req("PATCH", "/book", p) }, app: { get: () => req("GET", "/app"), set: (p) => req("PATCH", "/app", p) },
       accounts: crud("accounts"), departments: crud("departments"), vatRates: crud("vat-rates"), dedRates: crud("deduction-rates"), categories: crud("categories"),
       transactions: Object.assign(crud("transactions"), { bulk: (r) => req("POST", "/transactions/bulk", r).then((j) => j.count), togglePaid: (id) => req("POST", `/transactions/${id}/toggle-paid`, {}), saveClosing: (d) => req("POST", "/transactions/closing", d), collect: (id, accountId) => req("POST", `/transactions/${id}/collect`, { accountId }) }),
+      migrateClosingV13: () => req("POST", "/transactions/migrate-closing-v13", {}),
       transfers: crud("transfers"), clients: crud("clients"), events: crud("events"),
       payments: { list: () => req("GET", "/payments"), save: (r, entry) => (r.id ? req("PUT", "/payments/" + r.id, { payment: r, entry }) : req("POST", "/payments", { payment: r, entry })), remove: (id, alsoEntry) => req("DELETE", `/payments/${id}?entry=${alsoEntry ? 1 : 0}`) },
       invoices: Object.assign(crud("invoices"), { markPaid: (id, p) => req("POST", `/invoices/${id}/pay`, p || {}) }),
@@ -457,6 +478,7 @@ window.GA = window.GA || {};
       },
       users: { directory: () => rpc("users.directory"), list: () => rpc("users.list"), create: (d) => rpc("users.create", d), update: (id, patch) => rpc("users.update", { id, patch }), resetPassword: (id, password) => rpc("users.resetPassword", { id, password }), remove: (id) => rpc("users.remove", { id }) },
       book: W(core.book),
+      migrateClosingV13: wrap(core.migrateClosingV13, true),
       app: { get: async () => (token ? wrap(core.app.get, false)() : rpc("status").then((s) => ({ allowSelfRegistration: !!s.allowSelfRegistration }))), set: wrap(core.app.set, true) },
       accounts: W(core.accounts), departments: W(core.departments), vatRates: W(core.vatRates), dedRates: W(core.dedRates), categories: W(core.categories),
       transactions: W(core.transactions), transfers: W(core.transfers), clients: W(core.clients), events: W(core.events), payments: W(core.payments), invoices: W(core.invoices),
