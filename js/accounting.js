@@ -133,9 +133,9 @@ window.GA = window.GA || {};
       <div class="quick-more"><button class="link-btn" data-quick="in">${I("plus", "xs")}${t("cl.single")}</button><button class="link-btn" id="homeScan" data-scansheet>${I("camera", "xs")}${t("sc.short")}</button></div>
       ${GA.invoicesUI ? GA.invoicesUI.homeCard() : ""}
       <div class="kpis">
-        ${kpi(t("dash.inNet"), M(m.inNet), m.inRatio != null ? deltaTxt(m.inRatio, t("dash.vsPrev")) : "")}
-        ${kpi(t("dash.outNet"), M(m.outNet), m.outRatio != null ? deltaTxt(m.outRatio, t("dash.vsPrev"), true) : "")}
-        ${kpi(t("dash.profit"), `<span class="${signCls(m.profit)}">${M(m.profit)}</span>`, goalTxt, m.goal ? bar(m.goalPct) : "")}
+        ${kpi(t("dash.inGross"), M(m.inGrossPaid), m.inRatioGross != null ? deltaTxt(m.inRatioGross, t("dash.vsPrev")) : "")}
+        ${kpi(t("dash.outGross"), M(m.outGrossPaid), m.outRatioGross != null ? deltaTxt(m.outRatioGross, t("dash.vsPrev"), true) : "")}
+        ${kpi(t("dash.profit"), `<span class="${signCls(m.profitGross)}">${M(m.profitGross)}</span>`, m.goal ? `${t("dash.profitNet")} ${M(m.profit)} · ${goalTxt}` : goalTxt, m.goal ? bar(m.goalPct) : "")}
         ${kpi(t("dash.vat"), M(Math.abs(m.vatBalance)), m.vatBalance >= 0 ? t("dash.vatPay") : t("dash.vatRecover"))}
       </div>
       ${toCol.length ? `<section class="card collect-card"><div class="card-h"><h3>${t("cl.toCollect")}</h3><b id="toCollectTot">${M(toCol.reduce((s, x) => s + x.gross, 0))}</b></div>
@@ -417,12 +417,12 @@ window.GA = window.GA || {};
         <select id="dept" class="w-auto">${deptOpts(dept)}</select></header>
       <p class="muted small">${t("dash.month")} · ${t("dash.progress")} ${U().pct(m.progress)} (${m.wdElapsed}/${m.wdTotal} ${t("dash.workdays")})</p>${bar(m.progress)}
       <div class="kpis k3">
-        ${kpi(t("dash.inNet"), M(m.inNet), m.inRatio != null ? deltaTxt(m.inRatio, t("dash.vsPrev")) : `${t("dash.prev")}: ${M(m.prevInNet)}`)}
-        ${kpi(t("dash.outNet"), M(m.outNet), m.outRatio != null ? deltaTxt(m.outRatio, t("dash.vsPrev"), true) : `${t("dash.prev")}: ${M(m.prevOutNet)}`)}
-        ${kpi(t("dash.profit"), `<span class="${signCls(m.profit)}">${M(m.profit)}</span>`, `${t("dash.goal")} ${m.goal ? M0(m.goal) : "—"} · ${goalTxt}`, m.goal ? bar(m.goalPct) : "")}
+        ${kpi(t("dash.inGross"), M(m.inGrossPaid), m.inRatioGross != null ? deltaTxt(m.inRatioGross, t("dash.vsPrev")) : `${t("dash.prev")}: ${M(m.prevInGross)}`)}
+        ${kpi(t("dash.outGross"), M(m.outGrossPaid), m.outRatioGross != null ? deltaTxt(m.outRatioGross, t("dash.vsPrev"), true) : `${t("dash.prev")}: ${M(m.prevOutGross)}`)}
+        ${kpi(t("dash.profit"), `<span class="${signCls(m.profitGross)}">${M(m.profitGross)}</span>`, `${t("dash.profitNet")} ${M(m.profit)} · ${t("dash.goal")} ${m.goal ? M0(m.goal) : "—"} · ${goalTxt}`, m.goal ? bar(m.goalPct) : "")}
         ${kpi(t("dash.vat"), M(Math.abs(m.vatBalance)), `${m.vatBalance >= 0 ? t("dash.vatPay") : t("dash.vatRecover")} · ${t("dash.vatSales")} ${M(m.vatSales)} · ${t("dash.vatPurch")} ${M(m.vatPurch)}`, m.vatSplit != null ? `<div class="split"><i style="width:${m.vatSplit * 100}%"></i></div>` : "")}
         ${kpi(t("dash.liquidity"), `<span class="${signCls(m.liquidity)}">${M(m.liquidity)}</span>`, t("dash.liquidityHint"))}
-        ${kpi(t("dash.perWd"), `${M(m.inDaily || 0)}`, `${t("tx.outs")} ${M(m.outDaily || 0)} · ${t("dash.breakeven")} ${M(m.breakeven)}`)}
+        ${kpi(t("dash.perWd"), `${M(m.inDailyGross || 0)}`, `${t("tx.outs")} ${M(m.outDailyGross || 0)} · ${t("dash.breakeven")} ${M(m.breakeven)}`)}
       </div>
       <section class="card"><div class="card-h"><h3>${t("dash.daily")}</h3></div><div class="chart h260"><canvas id="chDaily"></canvas></div></section>
       <div class="seg"><button class="${by === "categoryId" ? "on" : ""}" data-by="categoryId">${t("dash.byCategory")}</button><button class="${by === "accountId" ? "on" : ""}" data-by="accountId">${t("dash.byAccount")}</button></div>
@@ -526,8 +526,8 @@ window.GA = window.GA || {};
     if (view === "month") {
       const m = S()._monthData; const lbl = m.days.map((d) => Number(d.date.slice(8)));
       mk("chDaily", { data: { labels: lbl, datasets: [
-        { type: "bar", label: t("dash.inNet"), data: m.days.map((d) => d.inNet), backgroundColor: col.accent(), borderRadius: 3, maxBarThickness: 14 },
-        { type: "bar", label: t("dash.outNet"), data: m.days.map((d) => -d.outNet), backgroundColor: col.line, borderRadius: 3, maxBarThickness: 14 },
+        { type: "bar", label: t("dash.inGross"), data: m.days.map((d) => d.inGross), backgroundColor: col.accent(), borderRadius: 3, maxBarThickness: 14 },
+        { type: "bar", label: t("dash.outGross"), data: m.days.map((d) => -d.outGross), backgroundColor: col.line, borderRadius: 3, maxBarThickness: 14 },
         { type: "line", label: t("dash.breakeven"), data: m.days.map(() => m.breakeven), borderColor: col.ink, borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
         ...(m.goal ? [{ type: "line", label: t("dash.goalDaily"), data: m.days.map(() => m.goalDaily), borderColor: col.mute, borderWidth: 1, pointRadius: 0 }] : [])] }, options: { scales: axes(true) } });
       donut("chDonutIn", E.breakdown(m._inM, m._inP, by, "in"), by); donut("chDonutOut", E.breakdown(m._outM, m._outP, by, "out"), by);

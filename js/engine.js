@@ -156,11 +156,18 @@
     r.goal = num((opt.goals || {})[opt.month]);
     r.goalDiff = r.goal - r.profit; // >0 sotto l'obiettivo
     r.goalPct = r.goal ? Math.max(0, r.profit) / r.goal : 0;
+    r.inGrossPaid = sum(inM, "grossPaid"); r.outGrossPaid = sum(outM, "grossPaid");
+    r.prevInGross = sum(inP, "grossPaid"); r.prevOutGross = sum(outP, "grossPaid");
+    r.profitGross = r.inGrossPaid - r.outGrossPaid;
     const daily = (v, n) => (n ? v / n : null);
     r.inDaily = daily(r.inNet, wdElapsed); r.outDaily = daily(r.outNet, wdElapsed);
     r.inDailyPrev = daily(r.prevInNet, wdPrev); r.outDailyPrev = daily(r.prevOutNet, wdPrev);
     r.inRatio = r.inDaily != null && r.inDailyPrev ? r.inDaily / r.inDailyPrev : null;
     r.outRatio = r.outDaily != null && r.outDailyPrev ? r.outDaily / r.outDailyPrev : null;
+    r.inDailyGross = daily(r.inGrossPaid, wdElapsed); r.outDailyGross = daily(r.outGrossPaid, wdElapsed);
+    r.inDailyPrevGross = daily(r.prevInGross, wdPrev); r.outDailyPrevGross = daily(r.prevOutGross, wdPrev);
+    r.inRatioGross = r.inDailyGross != null && r.inDailyPrevGross ? r.inDailyGross / r.inDailyPrevGross : null;
+    r.outRatioGross = r.outDailyGross != null && r.outDailyPrevGross ? r.outDailyGross / r.outDailyPrevGross : null;
     // Stima liquidità: lordi (anche pianificati) fino a fine mese + saldi iniziali
     r.liquidity = sum(I.filter((t) => t.date <= m1), "gross") - sum(O.filter((t) => t.date <= m1), "gross") + E.openings(opt.accounts || []);
     r.liquidityStart = sum(I.filter((t) => t.date < m0), "gross") - sum(O.filter((t) => t.date < m0), "gross") + E.openings(opt.accounts || []);
@@ -171,7 +178,8 @@
     r.days = [];
     for (let d = m0; d <= m1; d = E.addDays(d, 1)) {
       const a = sum(inM.filter((t) => t.date === d), "net"), b = sum(outM.filter((t) => t.date === d), "net");
-      r.days.push({ date: d, inNet: a, outNet: b, profit: a - b, workday: E.isWorkday(d, opt.wd) });
+      const ag = sum(inM.filter((t) => t.date === d), "grossPaid"), bg = sum(outM.filter((t) => t.date === d), "grossPaid");
+      r.days.push({ date: d, inNet: a, outNet: b, profit: a - b, inGross: ag, outGross: bg, profitGross: ag - bg, workday: E.isWorkday(d, opt.wd) });
     }
     r.scheduledMonth = O.filter((t) => !t.paid && inRange(t.date, m0, m1)).sort((a, b) => a.date.localeCompare(b.date));
     r.scheduledAll = O.filter((t) => !t.paid).sort((a, b) => a.date.localeCompare(b.date));

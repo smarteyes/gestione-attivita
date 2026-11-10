@@ -3,7 +3,7 @@
    - vendor/fonts/icons: cache prima
    - /api/*: mai in cache
    Cambiare VERSION forza nuova installazione e cancella le cache vecchie. */
-const VERSION = "ga-v11";
+const VERSION = "ga-v12";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "fonts/fonts.css",
   "css/app.css", "css/themes.css",
   "js/engine.js", "js/config.js", "js/runtime-config.js", "js/i18n.js", "js/icons.js",
