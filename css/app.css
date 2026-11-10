@@ -369,8 +369,8 @@ details.more > summary { cursor: pointer; color: var(--mute); font-size: .85rem;
 .week-tbl td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .week-tbl .week-row { cursor: pointer; }
 .week-tbl .week-row:active, .week-tbl .week-row.on { background: var(--accent-soft); }
-.week-tbl .week-row td:first-child { display: flex; flex-direction: column; gap: 2px; }
-.week-tbl .week-row small { display: block; }
+.week-tbl .week-row td:first-child b { display: block; }
+.week-tbl .week-row td:first-child small { display: block; margin-top: 2px; }
 .week-sub { color: var(--mute); font-size: .68rem; line-height: 1.25; max-width: 11rem; }
 .tx-dayhead { position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 12px 8px; background: var(--card); border-bottom: 1px solid var(--line); box-shadow: 0 1px 0 var(--card); }
 .txlist.full-list .tx-dayhead { padding-left: 12px; padding-right: 12px; }
