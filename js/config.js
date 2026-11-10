@@ -5,7 +5,7 @@
 window.GA = window.GA || {};
 
 GA.config = {
-  appVersion: 8,  // mostrata in Impostazioni; allineata a sw.js ga-vN e ?v=N in index.html
+  appVersion: 9,  // mostrata in Impostazioni; allineata a sw.js ga-vN e ?v=N in index.html
   // Scansione scontrini/fatture. extractor: "local" = OCR nel browser (offline, Tesseract.js + pdf.js inclusi);
   // "remote" = il backend legge il documento (es. servizio AI di visione) via POST {restBaseUrl}/scan. Nessuna chiamata online finché resta "local".
   scan: { extractor: "local", maxSide: 2000, keepSide: 1400, keepQuality: 0.62, psm: "4" },
@@ -101,7 +101,11 @@ GA.theme = {
     if (typeof document === "undefined") return n;
     const h = document.documentElement; Array.from(h.classList).filter((c) => c.startsWith("theme-")).forEach((c) => h.classList.remove(c)); h.classList.add("theme-" + n);
     try { localStorage.setItem("ga_theme", n); } catch (e) { /* archiviazione non disponibile */ }
-    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = getComputedStyle(h).getPropertyValue("--bg").trim() || "#0b0b0c";
+    // Colori status bar / chrome: leggibili su iOS Home Screen (Parigino rosa ≠ icone bianche)
+    const barColors = { dark: "#0b0b0c", paris: "#EAC7C3", sage: "#DBDAAF", macaron: "#ffe6ee" };
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = barColors[n] || getComputedStyle(h).getPropertyValue("--bg").trim() || "#0b0b0c";
+    const sb = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (sb) sb.content = n === "dark" ? "black-translucent" : "default";
     return n;
   },
   device() { try { return GA.themeFix(localStorage.getItem("ga_theme")); } catch (e) { return GA.themeDefault; } },

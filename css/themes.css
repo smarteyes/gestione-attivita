@@ -19,6 +19,10 @@ html.theme-dark {
 }
 .theme-dark h1 { font-weight: 800; letter-spacing: -0.03em; }
 .theme-dark .home-head h1 { font-size: 1.9rem; }
+@media (max-width: 899px) {
+  .theme-dark h1 { font-size: 1.7rem; }
+  .theme-dark .page-head h1, .theme-dark .home-head h1 { font-size: 1.7rem; }
+}
 .theme-dark .home-head small { color: var(--accent); text-transform: uppercase; letter-spacing: .14em; font-size: .7rem; font-weight: 700; }
 .theme-dark .hero { background: linear-gradient(180deg, #1b1b1e, #141416); border-color: #303036; }
 .theme-dark .hero .label { color: var(--accent); }
@@ -59,8 +63,13 @@ html.theme-paris {
 .theme-paris h1 { font-size: 1.75rem; }
 /* testata morbida a "collina" (come Oliva) */
 .theme-paris .home-head, .theme-paris .main > .page-head {
-  margin: calc(-1 * var(--mp-t)) calc(-1 * var(--mp-x)) calc(var(--gap) + 4px); padding: calc(var(--mp-t) + 4px) var(--mp-x) 30px;
-  background: #EAC7C3; border-radius: 0 0 50% 50% / 0 0 30px 30px;
+  margin: calc(-1 * var(--mp-t)) calc(-1 * var(--mp-x)) calc(var(--gap) + 2px);
+  padding: calc(var(--mp-t) + 2px) var(--mp-x) 18px;
+  background: #EAC7C3; border-radius: 0 0 50% 50% / 0 0 22px 22px;
+}
+@media (max-width: 899px) {
+  .theme-paris h1 { font-size: 1.7rem; }
+  .theme-paris .page-head h1, .theme-paris .home-head h1 { font-size: 1.7rem; }
 }
 .theme-paris .home-head small { color: #6B4A45; font-weight: 500; }
 .theme-paris .home-head .btn.ghost, .theme-paris .main > .page-head .btn.ghost { background: rgba(247, 242, 236, .7); }
@@ -110,7 +119,13 @@ html.theme-macaron {
 .theme-macaron .card { border-color: transparent; }
 /* testata rosa con bordo smerlato */
 .theme-macaron .home-head, .theme-macaron .main > .page-head {
-  position: relative; margin: calc(-1 * var(--mp-t)) calc(-1 * var(--mp-x)) calc(var(--gap) + 14px); padding: calc(var(--mp-t) + 4px) var(--mp-x) 18px; background: #ffe6ee;
+  position: relative; margin: calc(-1 * var(--mp-t)) calc(-1 * var(--mp-x)) calc(var(--gap) + 10px);
+  padding: calc(var(--mp-t) + 2px) var(--mp-x) 14px; background: #ffe6ee;
+}
+@media (max-width: 899px) {
+  .theme-macaron h1 { font-size: 1.7rem; }
+  .theme-macaron .page-head h1, .theme-macaron .home-head h1 { font-size: 1.7rem; }
+  .theme-macaron .home-head h1 { font-size: 1.7rem; }
 }
 .theme-macaron .home-head::after, .theme-macaron .main > .page-head::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: -11px; height: 12px;
@@ -167,8 +182,13 @@ html.theme-sage {
 .theme-sage h1 { font-size: 1.75rem; }
 /* testata morbida a "collina" */
 .theme-sage .home-head, .theme-sage .main > .page-head {
-  margin: calc(-1 * var(--mp-t)) calc(-1 * var(--mp-x)) calc(var(--gap) + 4px); padding: calc(var(--mp-t) + 4px) var(--mp-x) 30px;
-  background: #DBDAAF; border-radius: 0 0 50% 50% / 0 0 30px 30px;
+  margin: calc(-1 * var(--mp-t)) calc(-1 * var(--mp-x)) calc(var(--gap) + 2px);
+  padding: calc(var(--mp-t) + 2px) var(--mp-x) 18px;
+  background: #DBDAAF; border-radius: 0 0 50% 50% / 0 0 22px 22px;
+}
+@media (max-width: 899px) {
+  .theme-sage h1 { font-size: 1.7rem; }
+  .theme-sage .page-head h1, .theme-sage .home-head h1 { font-size: 1.7rem; }
 }
 .theme-sage .home-head small { color: #48521C; font-weight: 500; }
 .theme-sage .home-head .btn.ghost, .theme-sage .main > .page-head .btn.ghost { background: rgba(252, 255, 245, .7); }
