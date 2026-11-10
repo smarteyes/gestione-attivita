@@ -263,7 +263,29 @@
     applyBrand(); GA.i18n.init();
     if (!window.crypto || !crypto.subtle) { app().innerHTML = `<p style="padding:2rem">Web Crypto non disponibile: aprire il sito via https, http://localhost o file://</p>`; return; }
     await api.init(); await boot();
-    // installabile come app (PWA): solo via http(s), non da file://
-    if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
+    // PWA: aggiornamento aggressivo per iOS standalone (icona Home).
+    // updateViaCache:'none' evita che Safari tenga sw.js fresco dalla HTTP cache (GH Pages max-age=600).
+    // update() al load / pageshow / visibilitychange; un solo reload su controllerchange.
+    if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+      const swUrl = "sw.js?v=" + (GA.config.appVersion || "");
+      // Reload solo quando un NUOVO worker sostituisce uno già attivo (aggiornamento),
+      // non alla prima installazione — altrimenti iOS/standalone o il login vengono interrotti.
+      const hadController = !!navigator.serviceWorker.controller;
+      let reloading = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!hadController || reloading) return;
+        reloading = true;
+        location.reload();
+      });
+      navigator.serviceWorker.register(swUrl, { updateViaCache: "none" }).then((reg) => {
+        const poke = () => { try { reg.update(); } catch (e) {} };
+        poke();
+        document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") poke(); });
+        // iOS standalone: pageshow (anche da snapshot) + focus quando si rientra dall'icona Home
+        window.addEventListener("pageshow", () => poke());
+        window.addEventListener("focus", poke);
+        setInterval(poke, 3 * 60 * 1000);
+      }).catch(() => {});
+    }
   });
 })();
