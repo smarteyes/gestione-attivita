@@ -115,8 +115,8 @@
       <nav class="tabbar">
         ${[["home", "home"], ["tx", "list"]].map(([k, ic]) => `<a href="${navHref(k)}" class="${view === k ? "active" : ""}">${I(ic)}<span>${t("nav." + k)}</span></a>`).join("")}
         <span class="tab-gap"></span>
-        <a href="${navHref("month")}" class="${view === "month" ? "active" : ""}">${I("chart")}<span>${t("nav.month")}</span></a>
-        <a href="#/more" class="${["more", "year", "accounts", "invoices", "calendar", "events", "event", "settings", "users", "profile"].includes(view) ? "active" : ""}">${I("menu")}<span>${t("nav.more")}</span></a>
+        ${(() => { const n = (E.invoiceTotals(S.invoices || [], E.today()) || {}).nOverdue || 0; const b = n ? `<b class="tab-badge" aria-label="${n} ${t("inv.overdue")}">${n > 99 ? "99+" : n}</b>` : ""; return `<a href="${navHref("invoices")}" class="${view === "invoices" ? "active" : ""}">${I("receipt")}${b}<span>${t("nav.invoices")}</span></a>`; })()}
+        <a href="#/more" class="${["more", "month", "year", "accounts", "calendar", "events", "event", "settings", "users", "profile"].includes(view) ? "active" : ""}">${I("menu")}<span>${t("nav.more")}</span></a>
       </nav></div>`;
     bindLang(app());
     $("#logout").onclick = logout;
@@ -124,7 +124,7 @@
   }
   async function logout() { await api.auth.logout(); S.user = null; S.loaded = false; S._migClosing = false; if (location.hash !== "#/login") location.hash = "#/login"; else render(); }
   function viewMore() {
-    const items = [["year", "star"], ["accounts", "wallet"], ["invoices", "receipt"], ["calendar", "calendar"], ["events", "event"], ["settings", "settings"]].concat(isAdmin() ? [["users", "people"]] : []).concat([["profile", "user"]]);
+    const items = [["month", "chart"], ["year", "star"], ["accounts", "wallet"], ["calendar", "calendar"], ["events", "event"], ["settings", "settings"]].concat(isAdmin() ? [["users", "people"]] : []).concat([["profile", "user"]]);
     return `<header class="page-head"><h1>${t("nav.more")}</h1></header>
       <div class="menu-list card">${items.map(([k, ic]) => `<a href="${navHref(k)}">${I(ic)}<span>${t("nav." + k)}</span>${I("right", "chev")}</a>`).join("")}</div>
       <div class="menu-list card"><div class="row-item">${I("globe")}<span>${t("set.language")}</span>${langSelect()}</div><button class="row-item" id="logout3">${I("logout")}<span>${t("nav.logout")}</span></button></div>`;

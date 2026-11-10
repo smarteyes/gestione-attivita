@@ -36,6 +36,7 @@ html.theme-dark {
 .theme-dark .btn:hover { border-color: #4a4a52; }
 .theme-dark .btn.primary:hover { filter: brightness(1.08); }
 .theme-dark .tabbar a.active { color: var(--accent); }
+.theme-dark .tabbar .tab-badge { color: #1a1210; }
 .theme-dark .fab { box-shadow: 0 0 0 6px rgba(198, 244, 50, .1), 0 8px 24px rgba(0, 0, 0, .6); }
 .theme-dark .quick .btn.quick-out { background: #1d1d21; }
 .theme-dark .cl-in input { color: #fff; font-weight: 800; }

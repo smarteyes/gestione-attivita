@@ -104,8 +104,9 @@ select { appearance: none; background-image: var(--select-arrow); background-rep
 .lang-sel { flex-direction: row; align-items: center; gap: 4px; color: var(--mute); }
 .lang-sel select { border: 0; background-color: transparent; min-height: 32px; padding: 4px 26px 4px 4px; font-size: .85rem; width: auto; box-shadow: none; }
 .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: 1fr 1fr 72px 1fr 1fr; background: var(--bar); backdrop-filter: blur(10px); border-top: 1px solid var(--line); padding: 6px max(4px, var(--safe-l)) calc(6px + var(--safe-b)) max(4px, var(--safe-r)); }
-.tabbar a { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .7rem; color: var(--mute2); padding: 4px 0; }
+.tabbar a { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .7rem; color: var(--mute2); padding: 4px 0; }
 .tabbar a.active { color: var(--accent); }
+.tabbar .tab-badge { position: absolute; top: 0; left: calc(50% + 4px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--neg); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; box-sizing: border-box; pointer-events: none; box-shadow: 0 0 0 1.5px var(--bar); }
 .fab { position: fixed; z-index: 21; left: 50%; transform: translateX(-50%); bottom: calc(14px + var(--safe-b)); width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); cursor: pointer; }
 .fab .ic { width: 26px; height: 26px; }
 
