@@ -24,16 +24,6 @@ window.GA = window.GA || {};
   const periodLabel = (p) => (p.key.startsWith("m:") ? U().monthName(p.key.slice(2)) : t("period." + p.key));
   const periodSelect = (cur, attrs) => `<select ${attrs}>${periods().map((p) => `<option value="${p.key}" ${cur === p.key ? "selected" : ""}>${esc(periodLabel(p))}</option>`).join("")}</select>`;
   function txMonthKey() { return S()._txMonth || today().slice(0, 7); }
-  function monthBounds(ym) { const from = ym + "-01"; return { from, to: E.eomonth(from, 0) }; }
-  function monthWeeks(ym) {
-    const { from, to } = monthBounds(ym); const weeks = [];
-    for (let d = 1, n = 1, last = Number(to.slice(8)); d <= last; d += 7, n++) {
-      const a = ym + "-" + String(d).padStart(2, "0");
-      const b = ym + "-" + String(Math.min(d + 6, last)).padStart(2, "0");
-      weeks.push({ n, from: a, to: b, label: String(d) + "–" + String(Math.min(d + 6, last)) });
-    }
-    return weeks;
-  }
   function shortDate(iso) {
     if (!iso) return ""; const d = new Date(iso + "T00:00:00"); if (isNaN(d)) return iso;
     const dd = String(d.getDate()).padStart(2, "0"), mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -49,18 +39,45 @@ window.GA = window.GA || {};
     const s = d.toLocaleDateString(loc, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
+  function weekDayLabels() {
+    // 2023-01-02 = lunedì; etichette corte nella lingua corrente
+    return [0, 1, 2, 3, 4, 5, 6].map((i) => {
+      const d = new Date(Date.UTC(2023, 0, 2 + i));
+      return d.toLocaleDateString(GA.i18n.locale(), { weekday: "short", timeZone: "UTC" }).replace(/\.$/, "");
+    });
+  }
+  function calAmt(n, kind) {
+    const v = Math.abs(Number(n) || 0);
+    const num = (Math.round(v * 100) / 100).toLocaleString(GA.i18n.locale(), { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return (kind === "in" ? "+" : "−") + num;
+  }
   function filteredTx() {
     let rows = E.filterTx(S().tx, S().f, periods());
-    const w = S()._txWeek; const mk = txMonthKey();
-    if (w && w.from && w.to) rows = rows.filter((x) => x.date >= w.from && x.date <= w.to);
+    const day = S()._txDay; const mk = txMonthKey();
+    if (day) rows = rows.filter((x) => x.date === day);
     else if (!S().f.period) rows = rows.filter((x) => (x.date || "").startsWith(mk));
     return rows;
   }
-  function weekStats(txs, from, to) {
-    const inR = txs.filter((x) => x.date >= from && x.date <= to && x.paid);
-    const ins = inR.filter((x) => x.type === "in"), outs = inR.filter((x) => x.type === "out");
-    const sum = (L) => L.reduce((s, x) => s + (Number(x.gross) || 0), 0);
-    return { in: sum(ins), out: sum(outs), saldo: sum(ins) - sum(outs), cash: sum(ins.filter((x) => x.closing === "cash")), pos: sum(ins.filter((x) => x.closing === "pos")), unpaid: sum(ins.filter((x) => x.closing === "unpaid")) };
+  function dayStatsMap(txs) {
+    const map = {};
+    txs.forEach((x) => {
+      if (!x.paid || !x.date) return;
+      const m = map[x.date] || (map[x.date] = { in: 0, out: 0 });
+      m[x.type === "in" ? "in" : "out"] += Number(x.gross) || 0;
+    });
+    return map;
+  }
+  function monthCalCells(ym, stats) {
+    const first = ym + "-01";
+    const dow = (E.parse(first).getDay() + 6) % 7; // 0 = lunedì
+    let cur = E.addDays(first, -dow);
+    const cells = [];
+    for (let i = 0; i < 42; i++) {
+      const st = stats[cur] || { in: 0, out: 0 };
+      cells.push({ iso: cur, n: Number(cur.slice(8)), inMonth: cur.startsWith(ym), today: cur === today(), inn: st.in, out: st.out });
+      cur = E.addDays(cur, 1);
+    }
+    return cells;
   }
   function renderTxGroups(rows, lim, compact) {
     const slice = rows.slice(0, lim); let html = "", cur = "", buf = [];
@@ -188,26 +205,34 @@ window.GA = window.GA || {};
   function viewTx(parts) {
     if (parts[1] === "in" || parts[1] === "out") S().f.type = parts[1];
     if (!S()._txMonth) S()._txMonth = today().slice(0, 7);
-    const F = S().f, mk = txMonthKey(), weeks = monthWeeks(mk), wsel = S()._txWeek;
+    const F = S().f, mk = txMonthKey(), dsel = S()._txDay;
     const prevM = E.addMonths(mk + "-01", -1).slice(0, 7), nextM = E.addMonths(mk + "-01", 1).slice(0, 7);
     const rows = filteredTx(), tot = E.totals(rows), lim = S()._lim || 200;
     const cats = S().categories.filter((c) => !F.type || c.type === F.type);
-    const nFilters = ["paid", "period", "accountId", "deptId", "categoryId", "ref", "q"].filter((k) => F[k]).length + (wsel ? 1 : 0);
-    // totali settimane: movimenti del mese (stessi filtri tipo/stato/conto…, senza settimana)
-    const monthRows = (() => { const hold = S()._txWeek; S()._txWeek = null; const r = filteredTx(); S()._txWeek = hold; return r; })();
-    const weekRows = weeks.map((w) => Object.assign({ w }, weekStats(monthRows, w.from, w.to)));
-    const weekTbl = `<section class="card week-card"><div class="card-h"><h3>${t("tx.weeks")}</h3>${wsel ? `<button class="btn ghost xs" data-weekclear>${t("tx.allWeeks")}</button>` : ""}</div>
-      <div class="week-wrap"><table class="week-tbl"><thead><tr><th>${t("tx.weekCol")}</th><th class="num">${t("tx.ins")}</th><th class="num">${t("tx.outs")}</th><th class="num">${t("tx.saldo")}</th></tr></thead>
-        <tbody>${weekRows.map(({ w, in: inn, out, saldo, cash, pos, unpaid }) => {
-          const on = wsel && wsel.from === w.from ? "on" : "";
-          const sub = [cash ? `${t("cl.Cash")} ${M(cash)}` : "", pos ? `${t("cl.Pos")} ${M(pos)}` : "", unpaid ? `${t("cl.Unpaid")} ${M(unpaid)}` : ""].filter(Boolean).join(" · ");
-          return `<tr class="week-row ${on}" data-week="${w.from}" data-week-to="${w.to}" tabindex="0"><td><b>${t("tx.week", { n: w.n })}</b><small class="muted">${esc(w.label)}</small>${sub ? `<small class="week-sub">${esc(sub)}</small>` : ""}</td><td class="num">${M(inn)}</td><td class="num">${M(out)}</td><td class="num ${saldo < 0 ? "neg" : ""}"><b>${M(saldo)}</b></td></tr>`;
-        }).join("")}</tbody></table></div></section>`;
+    const nFilters = ["paid", "period", "accountId", "deptId", "categoryId", "ref", "q"].filter((k) => F[k]).length + (dsel ? 1 : 0);
+    // totali calendario: stessi filtri, senza giorno selezionato
+    const monthRows = (() => { const hold = S()._txDay; S()._txDay = null; const r = filteredTx(); S()._txDay = hold; return r; })();
+    const cells = monthCalCells(mk, dayStatsMap(monthRows));
+    const wds = weekDayLabels();
+    const cal = `<section class="card tx-cal-card">
+      <div class="stepper tx-month"><button type="button" class="icon-btn" data-txm="${prevM}" aria-label="prev">${I("left")}</button><b>${esc(U().monthName(mk))}</b><button type="button" class="icon-btn" data-txm="${nextM}" aria-label="next">${I("right")}</button></div>
+      <div class="tx-cal" role="grid" aria-label="${esc(t("tx.cal"))}">
+        <div class="tx-cal-wd">${wds.map((w) => `<span>${esc(w)}</span>`).join("")}</div>
+        <div class="tx-cal-grid">${cells.map((c) => {
+          const cls = ["tx-cal-d", c.inMonth ? "" : "out", c.today ? "today" : "", dsel === c.iso ? "on" : "", (c.inn || c.out) ? "has" : ""].filter(Boolean).join(" ");
+          const has = c.inn || c.out;
+          const am = has
+            ? `<span class="tx-cal-out">${esc(calAmt(c.out, "out"))}</span><span class="tx-cal-in">${esc(calAmt(c.inn, "in"))}</span>`
+            : `<span class="tx-cal-blank"></span>`;
+          return `<button type="button" class="${cls}" data-txday="${c.iso}" ${c.inMonth ? "" : 'data-txm="' + c.iso.slice(0, 7) + '"'}><span class="tx-cal-n">${c.n}</span>${am}</button>`;
+        }).join("")}</div>
+      </div>
+      ${dsel ? `<div class="tx-cal-foot"><button type="button" class="btn ghost sm" data-dayclear>${t("tx.allMonth")}</button><small class="muted">${esc(dayHeading(dsel))}</small></div>` : ""}
+    </section>`;
     return `<header class="page-head"><h1>${t("nav.tx")}</h1><div class="head-actions">
         <button class="btn ghost sm" data-rec>${I("repeat")}<span>${t("tx.recurrence")}</span></button>
         <button class="btn primary sm" data-new>${I("plus")}<span>${F.type === "out" ? t("tx.newOut") : t("tx.newIn")}</span></button></div></header>
-      <div class="stepper tx-month"><button class="icon-btn" data-txm="${prevM}" aria-label="prev">${I("left")}</button><b>${esc(U().monthName(mk))}</b><button class="icon-btn" data-txm="${nextM}" aria-label="next">${I("right")}</button></div>
-      ${weekTbl}
+      ${cal}
       <div class="seg">${[["", "tx.all"], ["in", "tx.ins"], ["out", "tx.outs"]].map(([k, l]) => `<button class="${F.type === k ? "on" : ""}" data-ftype="${k}">${t(l)}</button>`).join("")}</div>
       <details class="filters card" ${S()._fopen ? "open" : ""}><summary>${I("filter")}<span>${t("a.filters")}</span>${nFilters ? `<span class="pill">${nFilters}</span>` : ""}<span class="sp"></span><small class="muted">${rows.length} ${t("tx.count")}</small></summary>
         <div class="form-grid">
@@ -523,10 +548,15 @@ window.GA = window.GA || {};
       if (el("[data-trnew]")) return transferForm(null);
       if (el("[data-more]")) { S()._lim = (S()._lim || 200) + 300; return U().route(); }
       if ((x = el("[data-ftype]"))) { S().f.type = x.dataset.ftype; S().f.categoryId = ""; if (parts[1]) { location.hash = "#/tx"; return; } return U().route(); }
-      if (el("[data-freset]")) { Object.keys(S().f).forEach((k) => { if (k !== "type") S().f[k] = ""; }); S()._txWeek = null; return U().route(); }
-      if ((x = el("[data-txm]"))) { S()._txMonth = x.dataset.txm; S()._txWeek = null; S().f.period = ""; S()._lim = 200; return U().route(); }
-      if ((x = el("[data-week]"))) { const from = x.dataset.week, to = x.dataset.weekTo; S()._txWeek = (S()._txWeek && S()._txWeek.from === from) ? null : { from, to }; S()._lim = 200; return U().route(); }
-      if (el("[data-weekclear]")) { S()._txWeek = null; S()._lim = 200; return U().route(); }
+      if (el("[data-freset]")) { Object.keys(S().f).forEach((k) => { if (k !== "type") S().f[k] = ""; }); S()._txDay = null; return U().route(); }
+      if ((x = el("[data-txday]"))) {
+        const iso = x.dataset.txday; const jump = x.dataset.txm;
+        if (jump && jump !== txMonthKey()) { S()._txMonth = jump; S()._txDay = iso; S().f.period = ""; }
+        else S()._txDay = (S()._txDay === iso) ? null : iso;
+        S()._lim = 200; return U().route();
+      }
+      if ((x = el("[data-txm]"))) { S()._txMonth = x.dataset.txm; S()._txDay = null; S().f.period = ""; S()._lim = 200; return U().route(); }
+      if (el("[data-dayclear]")) { S()._txDay = null; S()._lim = 200; return U().route(); }
       if ((x = el("[data-export]"))) return GA.settingsUI.exportTx(x.dataset.export);
       if ((x = el("[data-by]"))) { S()._by = x.dataset.by; return U().route(); }
       if ((x = el("[data-sched]"))) { S()._schedAll = x.dataset.sched === "1"; return U().route(); }
@@ -539,7 +569,7 @@ window.GA = window.GA || {};
       const ev = el.type === "search" || el.tagName === "INPUT" ? "input" : "change";
       el.addEventListener(ev, () => {
         S().f[el.dataset.f] = el.dataset.f === "period" && el.value === "all" ? "" : el.value; S()._fopen = true; S()._lim = 200;
-        if (el.dataset.f === "period") { S()._txWeek = null; if (/^m:\d{4}-\d{2}$/.test(S().f.period || "")) S()._txMonth = S().f.period.slice(2); }
+        if (el.dataset.f === "period") { S()._txDay = null; if (/^m:\d{4}-\d{2}$/.test(S().f.period || "")) S()._txMonth = S().f.period.slice(2); }
         clearTimeout(S()._q); S()._q = setTimeout(() => U().route().then(() => { const s = $(`[data-f="${el.dataset.f}"]`); if (s && s.tagName === "INPUT") { s.focus(); s.setSelectionRange(s.value.length, s.value.length); } }), ev === "input" ? 300 : 0);
       });
     });

@@ -357,21 +357,42 @@ details.more > summary { cursor: pointer; color: var(--mute); font-size: .85rem;
 }
 
 
-/* ---------- movimenti: intestazioni giorno + tabella settimane ---------- */
-.tx-month { justify-content: center; gap: 12px; margin: 0 0 var(--gap); }
-.tx-month b { font-size: 1.05rem; min-width: 10rem; text-align: center; }
-.week-card .card-h { align-items: center; }
-.week-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.week-tbl { width: 100%; border-collapse: collapse; font-size: .88rem; }
-.week-tbl th, .week-tbl td { padding: 10px 8px; border-bottom: 1px solid var(--line2); vertical-align: top; }
-.week-tbl th { text-align: right; color: var(--mute); font-weight: 500; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
-.week-tbl th:first-child, .week-tbl td:first-child { text-align: left; }
-.week-tbl td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.week-tbl .week-row { cursor: pointer; }
-.week-tbl .week-row:active, .week-tbl .week-row.on { background: var(--accent-soft); }
-.week-tbl .week-row td:first-child b { display: block; }
-.week-tbl .week-row td:first-child small { display: block; margin-top: 2px; }
-.week-sub { color: var(--mute); font-size: .68rem; line-height: 1.25; max-width: 11rem; }
+/* ---------- movimenti: calendario mese + intestazioni giorno ---------- */
+.tx-cal-card { padding: 12px 10px 10px; margin-bottom: var(--gap); }
+.tx-cal-card .tx-month { justify-content: center; gap: 10px; margin: 0 0 10px; }
+.tx-cal-card .tx-month b { font-size: 1.05rem; min-width: 9rem; text-align: center; }
+.tx-cal-wd { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 4px; }
+.tx-cal-wd span { text-align: center; font-size: .68rem; color: var(--mute2); text-transform: capitalize; padding: 2px 0; }
+.tx-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.tx-cal-d {
+  aspect-ratio: 1 / 1.12; min-height: 0; border: 0; border-radius: 10px; padding: 3px 2px 2px;
+  background: var(--raised, var(--card)); color: var(--ink); font: inherit; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 0;
+  box-shadow: inset 0 0 0 1px var(--line2); -webkit-tap-highlight-color: transparent;
+}
+.tx-cal-d .tx-cal-n { font-size: .78rem; font-weight: 600; line-height: 1.15; margin-bottom: 1px; }
+.tx-cal-d .tx-cal-out, .tx-cal-d .tx-cal-in {
+  display: block; width: 100%; text-align: center; font-size: .55rem; line-height: 1.15;
+  font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: clip;
+}
+.tx-cal-d .tx-cal-out { color: var(--neg, #b4533c); }
+.tx-cal-d .tx-cal-in { color: #2f7d4f; }
+html.theme-dark .tx-cal-d .tx-cal-in { color: var(--accent); }
+html.theme-paris .tx-cal-d .tx-cal-in { color: #5a7a4a; }
+html.theme-sage .tx-cal-d .tx-cal-in { color: #48521C; }
+html.theme-macaron .tx-cal-d .tx-cal-in { color: #2f7d4f; }
+.tx-cal-d .tx-cal-blank { flex: 1; }
+.tx-cal-d.out { color: var(--mute2); background: transparent; box-shadow: none; }
+.tx-cal-d.out .tx-cal-out, .tx-cal-d.out .tx-cal-in { opacity: .45; }
+.tx-cal-d.today { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.tx-cal-d.today .tx-cal-n { color: var(--accent); }
+.tx-cal-d.on { background: var(--accent); color: var(--on-accent); box-shadow: none; }
+.tx-cal-d.on .tx-cal-n { color: var(--on-accent); }
+.tx-cal-d.on .tx-cal-out { color: #ffd2c4; }
+.tx-cal-d.on .tx-cal-in { color: #d9f5c8; }
+html.theme-dark .tx-cal-d.on .tx-cal-in { color: var(--on-accent); opacity: .9; }
+.tx-cal-d:active { filter: brightness(.97); }
+.tx-cal-foot { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 0 2px; }
 .tx-dayhead { position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 12px 8px; background: var(--card); border-bottom: 1px solid var(--line); box-shadow: 0 1px 0 var(--card); }
 .txlist.full-list .tx-dayhead { padding-left: 12px; padding-right: 12px; }
 .tx-dayhead-l b { font-weight: 600; font-size: .92rem; text-transform: capitalize; }
