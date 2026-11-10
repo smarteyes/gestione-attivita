@@ -122,7 +122,7 @@
     $("#logout").onclick = logout;
     $("#fab").onclick = quickMenu;
   }
-  async function logout() { await api.auth.logout(); S.user = null; S.loaded = false; S._migV13 = false; if (location.hash !== "#/login") location.hash = "#/login"; else render(); }
+  async function logout() { await api.auth.logout(); S.user = null; S.loaded = false; S._migClosing = false; if (location.hash !== "#/login") location.hash = "#/login"; else render(); }
   function viewMore() {
     const items = [["year", "star"], ["accounts", "wallet"], ["invoices", "receipt"], ["calendar", "calendar"], ["events", "event"], ["settings", "settings"]].concat(isAdmin() ? [["users", "people"]] : []).concat([["profile", "user"]]);
     return `<header class="page-head"><h1>${t("nav.more")}</h1></header>
@@ -133,11 +133,11 @@
   /* ---------- DATI ---------- */
   async function loadData() {
     S.loaded = true;
-    if (!S._migV13 && typeof api.migrateClosingV13 === "function") {
+    if (!S._migClosing) {
       try {
-        const mig = await api.migrateClosingV13();
-        S._migV13 = true;
-        void mig;
+        if (typeof api.migrateClosingV13 === "function") await api.migrateClosingV13();
+        if (typeof api.migrateClosingV14 === "function") await api.migrateClosingV14();
+        S._migClosing = true;
       } catch (e) { /* riprova al prossimo caricamento */ }
     }
     const [dir, book, accounts, departments, vatRates, dedRates, categories, tx, transfers, clients, payments, events, invoices] = await Promise.all([

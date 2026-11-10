@@ -154,12 +154,12 @@ window.GA = window.GA || {};
   function viewClosing(parts) {
     const B = S().book, date = /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "") ? parts[1] : today(), dept = defDept();
     const ex = closingRows(date, dept), ro = ex.some((x) => !canEdit(x));
-    const defVat = (plainVat().find((v) => v.id === B.vatDefaultIn) || plainVat().slice(-1)[0] || {}).id;
+    const defVat = (K) => (E.closingVatId && E.closingVatId(B, K, plainVat())) || (plainVat().find((v) => v.id === B.vatDefaultIn) || plainVat().slice(-1)[0] || {}).id;
     const rows = CHN().map(([ch, K, ic]) => { const o = ex.find((x) => x.closing === ch) || {}; const acc = accOf(B["closingAcc" + K]);
       return `<section class="card cl-row ${ch}" data-ch="${ch}">
         <div class="cl-top"><span class="tx-ic in">${I(ic)}</span><span class="grow"><b>${esc(chLabel(K))}</b><small>${esc(acc ? acc.name : "")}</small></span></div>
         <div class="cl-in"><label><span class="sr">${t("tx.gross")}</span><input type="number" inputmode="decimal" step="0.01" min="0" name="g_${ch}" placeholder="0,00" value="${o.gross != null ? esc(o.gross) : ""}" ${ro ? "disabled" : ""}></label>
-          <label><span class="sr">${t("tx.vat")}</span><select name="v_${ch}" ${ro ? "disabled" : ""}>${plainVat().map((v) => `<option value="${v.id}" ${(o.vatId || defVat) === v.id ? "selected" : ""}>${esc(v.name)}</option>`).join("")}</select></label></div>
+          <label><span class="sr">${t("tx.vat")}</span><select name="v_${ch}" ${ro ? "disabled" : ""}>${plainVat().map((v) => `<option value="${v.id}" ${(o.vatId || defVat(K)) === v.id ? "selected" : ""}>${esc(v.name)}</option>`).join("")}</select></label></div>
         <div class="cl-calc" id="calc_${ch}"></div></section>`; }).join("");
     return `<header class="page-head"><h1>${t("cl.title")}</h1><div class="head-actions"><button class="btn ghost sm" data-quick="in">${I("plus")}<span>${t("cl.single")}</span></button></div></header>
       <form id="clForm" class="closing narrow-l">

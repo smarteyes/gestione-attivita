@@ -5,7 +5,7 @@
 window.GA = window.GA || {};
 
 GA.config = {
-  appVersion: 13,  // mostrata in Impostazioni; allineata a sw.js ga-vN e ?v=N in index.html
+  appVersion: 14,  // mostrata in Impostazioni; allineata a sw.js ga-vN e ?v=N in index.html
   // Scansione scontrini/fatture. extractor: "local" = OCR nel browser (offline, Tesseract.js + pdf.js inclusi);
   // "remote" = il backend legge il documento (es. servizio AI di visione) via POST {restBaseUrl}/scan. Nessuna chiamata online finché resta "local".
   scan: { extractor: "local", maxSide: 2000, keepSide: 1400, keepQuality: 0.62, psm: "4" },
@@ -35,6 +35,7 @@ GA.defaults = {
     // Chiusura serata: conto e categoria di ogni canale (Contanti / POS / Altro incasso, chiave interna unpaid)
     closingAccCash: "acc-cash", closingAccPos: "acc-bank", closingAccUnpaid: "acc-cash",
     closingCatCash: "cat-cash", closingCatPos: "cat-pos", closingCatUnpaid: "cat-unpaid",
+    closingVatCash: "v22", closingVatPos: "v22", closingVatUnpaid: "v0",
   }),
   vatRates: (lang) => {
     const L = { it: ["IVA", "IVA manuale"], en: ["VAT", "Manual VAT"], zh: ["增值税", "手动税额"] }[lang] || ["IVA", "IVA manuale"];

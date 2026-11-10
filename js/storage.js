@@ -229,7 +229,7 @@ window.GA = window.GA || {};
           GA.closingChannels.forEach(([ch, K]) => {
             const r = rows[ch] || {}, g = Math.round(num(r.gross) * 100) / 100, old = ex.find((t) => t.closing === ch);
             if (!g) { if (old) txs = txs.filter((t) => t.id !== old.id); return; }
-            const rec = { type: "in", date: d.date, deptId: dept, categoryId: b["closingCat" + K] || "", desc, gross: g, vatId: r.vatId || b.vatDefaultIn, vatManual: 0, dedId: "", notes: d.notes || "", closing: ch,
+            const rec = { type: "in", date: d.date, deptId: dept, categoryId: b["closingCat" + K] || "", desc, gross: g, vatId: r.vatId || (GA.engine && GA.engine.closingVatId ? GA.engine.closingVatId(b, K, col("vatRates")) : b["closingVat" + K] || b.vatDefaultIn), vatManual: 0, dedId: "", notes: d.notes || "", closing: ch,
               paid: true, accountId: b["closingAcc" + K] || b.closingAccCash || (col("accounts")[0] || {}).id };
             if (old) { const i = txs.findIndex((t) => t.id === old.id); const n = Object.assign({}, old, rec, { updatedAt: now(), updatedBy: u.id }); validate("transactions", n, txs); txs[i] = n; out.push(n); }
             else { const n = Object.assign({ id: uid(), createdBy: u.id, createdAt: now(), updatedAt: now() }, rec); validate("transactions", n, txs); txs.push(n); out.push(n); }
@@ -368,6 +368,29 @@ window.GA = window.GA || {};
         }
         return { transactions: txM.changed, categories: catChanged };
       },
+      migrateClosingV14: async () => {
+        const u = reqU();
+        const E = GA.engine;
+        if (!E || !E.applyClosingVatDefaults) return { transactions: 0, book: false, vat: false };
+        const isAdmin = u.role === "admin";
+        const rates0 = col("vatRates");
+        const applied = E.applyClosingVatDefaults(book() || {}, rates0, (book() || {}).lang || (GA.i18n && GA.i18n.lang) || "it");
+        if (isAdmin && applied.createdRate) write("vatRates", applied.rates);
+        if (isAdmin && applied.bookChanged) write("book", applied.book);
+        const vatId = applied.zeroId || E.closingVatId(applied.book, "Unpaid", applied.rates);
+        const shouldTx = (isAdmin && applied.firstUnpaid) || (!isAdmin && !(book() || {}).closingVatUnpaid);
+        let nTx = 0;
+        if (shouldTx && vatId) {
+          const txs = col("transactions");
+          const txM = E.migrateClosingUnpaidVat(txs, { vatId, canEdit: (t) => own(u, t) });
+          if (txM.changed) {
+            const stamped = txM.transactions.map((t, i) => (txs[i] && t !== txs[i]) ? Object.assign({}, t, { updatedAt: now(), updatedBy: u.id }) : t);
+            write("transactions", stamped);
+            nTx = txM.changed;
+          }
+        }
+        return { transactions: nTx, book: !!(isAdmin && applied.bookChanged), vat: !!(isAdmin && applied.createdRate) };
+      },
       _initBook: initBook, _reloadSession: () => { session = read("session", null); },
     };
   }
@@ -398,6 +421,7 @@ window.GA = window.GA || {};
       accounts: crud("accounts"), departments: crud("departments"), vatRates: crud("vat-rates"), dedRates: crud("deduction-rates"), categories: crud("categories"),
       transactions: Object.assign(crud("transactions"), { bulk: (r) => req("POST", "/transactions/bulk", r).then((j) => j.count), togglePaid: (id) => req("POST", `/transactions/${id}/toggle-paid`, {}), saveClosing: (d) => req("POST", "/transactions/closing", d), collect: (id, accountId) => req("POST", `/transactions/${id}/collect`, { accountId }) }),
       migrateClosingV13: () => req("POST", "/transactions/migrate-closing-v13", {}),
+      migrateClosingV14: () => req("POST", "/transactions/migrate-closing-v14", {}),
       transfers: crud("transfers"), clients: crud("clients"), events: crud("events"),
       payments: { list: () => req("GET", "/payments"), save: (r, entry) => (r.id ? req("PUT", "/payments/" + r.id, { payment: r, entry }) : req("POST", "/payments", { payment: r, entry })), remove: (id, alsoEntry) => req("DELETE", `/payments/${id}?entry=${alsoEntry ? 1 : 0}`) },
       invoices: Object.assign(crud("invoices"), { markPaid: (id, p) => req("POST", `/invoices/${id}/pay`, p || {}) }),
@@ -479,6 +503,7 @@ window.GA = window.GA || {};
       users: { directory: () => rpc("users.directory"), list: () => rpc("users.list"), create: (d) => rpc("users.create", d), update: (id, patch) => rpc("users.update", { id, patch }), resetPassword: (id, password) => rpc("users.resetPassword", { id, password }), remove: (id) => rpc("users.remove", { id }) },
       book: W(core.book),
       migrateClosingV13: wrap(core.migrateClosingV13, true),
+      migrateClosingV14: wrap(core.migrateClosingV14, true),
       app: { get: async () => (token ? wrap(core.app.get, false)() : rpc("status").then((s) => ({ allowSelfRegistration: !!s.allowSelfRegistration }))), set: wrap(core.app.set, true) },
       accounts: W(core.accounts), departments: W(core.departments), vatRates: W(core.vatRates), dedRates: W(core.dedRates), categories: W(core.categories),
       transactions: W(core.transactions), transfers: W(core.transfers), clients: W(core.clients), events: W(core.events), payments: W(core.payments), invoices: W(core.invoices),

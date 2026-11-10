@@ -294,6 +294,57 @@
     return { categories, changed };
   };
 
+  E.zeroVatName = function (lang) {
+    return ({ it: "IVA 0%", en: "VAT 0%", zh: "增值税 0%" }[lang] || "IVA 0%");
+  };
+  E.findZeroVat = function (rates) {
+    return (rates || []).find((r) => r && !r.manual && Math.abs(num(r.pct)) < 1e-9) || null;
+  };
+  /* Trova o crea un'aliquota non manuale al 0%. Idempotente. */
+  E.ensureZeroVatRate = function (rates, lang) {
+    const list = rates || [];
+    const found = E.findZeroVat(list);
+    if (found) return { rates: list, rate: found, created: false };
+    const ids = new Set(list.map((r) => r.id));
+    let id = "v0", n = 0;
+    while (ids.has(id)) id = "v0-" + (++n);
+    const rate = { id, name: E.zeroVatName(lang), pct: 0 };
+    return { rates: list.concat([rate]), rate, created: true };
+  };
+  /* Aliquota del canale chiusura: K = "Cash" | "Pos" | "Unpaid". */
+  E.closingVatId = function (book, K, rates) {
+    const b = book || {}, list = rates || [];
+    const set = b["closingVat" + K];
+    if (set && list.some((r) => r.id === set)) return set;
+    if (K === "Unpaid") { const z = E.findZeroVat(list); return z ? z.id : ""; }
+    return (b.vatDefaultIn && list.some((r) => r.id === b.vatDefaultIn)) ? b.vatDefaultIn : ((list[0] || {}).id || "");
+  };
+  /* Prima inizializzazione dei default per canale. Le righe unpaid si aggiornano solo se closingVatUnpaid non c'era ancora. */
+  E.applyClosingVatDefaults = function (book, rates, lang) {
+    const z = E.ensureZeroVatRate(rates, lang);
+    const b = Object.assign({}, book || {});
+    const firstUnpaid = !b.closingVatUnpaid;
+    const patch = {};
+    if (!b.closingVatUnpaid) patch.closingVatUnpaid = z.rate.id;
+    if (!b.closingVatCash) patch.closingVatCash = b.vatDefaultIn || z.rate.id;
+    if (!b.closingVatPos) patch.closingVatPos = b.vatDefaultIn || z.rate.id;
+    return { book: Object.assign({}, b, patch), rates: z.rates, zeroId: z.rate.id, createdRate: z.created, bookChanged: Object.keys(patch).length > 0, firstUnpaid };
+  };
+  E.migrateClosingUnpaidVat = function (txs, opt) {
+    opt = opt || {};
+    const vatId = opt.vatId || "";
+    const can = opt.canEdit || (() => true);
+    let changed = 0;
+    const transactions = (txs || []).map((t) => {
+      if (!t || t.closing !== "unpaid" || !vatId) return t;
+      if (t.vatId === vatId && !t.vatManual) return t;
+      if (!can(t)) return t;
+      changed++;
+      return Object.assign({}, t, { vatId, vatManual: 0 });
+    });
+    return { transactions, changed };
+  };
+
   /* ---------- Fatture da pagare ---------- */
   E.invoiceRemaining = function (inv) {
     const rem = Math.round((num(inv && inv.gross) - num(inv && inv.paidAmount)) * 100) / 100;
