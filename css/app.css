@@ -341,6 +341,7 @@ details.more > summary { cursor: pointer; color: var(--mute); font-size: .85rem;
   .tx { grid-template-columns: 32px 36px minmax(0, 1fr) 110px 90px 110px 130px; padding-left: 16px; padding-right: 16px; }
   .full-list .tx.head { display: grid; } .full-list .tx-col { display: block; color: var(--mute); font-size: .85rem; }
   .full-list .tx { padding-left: 16px; padding-right: 16px; }
+  .txlist.full-list .tx-dayhead { padding-left: 16px; padding-right: 16px; top: 0; }
   .card .txlist .tx { grid-template-columns: 32px 36px minmax(0, 1fr) auto; }
   .toast { bottom: 32px; }
 }
@@ -354,6 +355,29 @@ details.more > summary { cursor: pointer; color: var(--mute); font-size: .85rem;
   body.printing .modal { max-width: none; max-height: none; box-shadow: none; border-radius: 0; padding: 0; overflow: visible; animation: none; }
   @page { margin: 16mm; }
 }
+
+
+/* ---------- movimenti: intestazioni giorno + tabella settimane ---------- */
+.tx-month { justify-content: center; gap: 12px; margin: 0 0 var(--gap); }
+.tx-month b { font-size: 1.05rem; min-width: 10rem; text-align: center; }
+.week-card .card-h { align-items: center; }
+.week-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.week-tbl { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.week-tbl th, .week-tbl td { padding: 10px 8px; border-bottom: 1px solid var(--line2); vertical-align: top; }
+.week-tbl th { text-align: right; color: var(--mute); font-weight: 500; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+.week-tbl th:first-child, .week-tbl td:first-child { text-align: left; }
+.week-tbl td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.week-tbl .week-row { cursor: pointer; }
+.week-tbl .week-row:active, .week-tbl .week-row.on { background: var(--accent-soft); }
+.week-tbl .week-row td:first-child { display: flex; flex-direction: column; gap: 2px; }
+.week-tbl .week-row small { display: block; }
+.week-sub { color: var(--mute); font-size: .68rem; line-height: 1.25; max-width: 11rem; }
+.tx-dayhead { position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 12px 8px; background: var(--card); border-bottom: 1px solid var(--line); box-shadow: 0 1px 0 var(--card); }
+.txlist.full-list .tx-dayhead { padding-left: 12px; padding-right: 12px; }
+.tx-dayhead-l b { font-weight: 600; font-size: .92rem; text-transform: capitalize; }
+.tx-dayhead-r { color: var(--mute); font-variant-numeric: tabular-nums; font-weight: 600; }
+.tx-dayhead-r.neg { color: var(--neg); }
+.tx-amt small { letter-spacing: .01em; }
 
 /* ---------- chiusura serata ---------- */
 .closing-btn { justify-content: flex-start; text-align: left; gap: 12px; background: var(--accent); border-color: var(--accent); color: var(--on-accent) !important; padding: 10px 16px; }
