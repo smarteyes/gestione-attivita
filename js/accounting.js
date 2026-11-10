@@ -61,9 +61,16 @@ window.GA = window.GA || {};
   function dayStatsMap(txs) {
     const map = {};
     txs.forEach((x) => {
-      if (!x.paid || !x.date) return;
-      const m = map[x.date] || (map[x.date] = { in: 0, out: 0 });
-      m[x.type === "in" ? "in" : "out"] += Number(x.gross) || 0;
+      if (!x.date) return;
+      const m = map[x.date] || (map[x.date] = { in: 0, out: 0, unpaidIn: 0 });
+      const g = Number(x.gross) || 0;
+      if (x.type === "in") {
+        // verde: incassi pagati + Non riscosso / entrate pianificate
+        m.in += g;
+        if (!x.paid) m.unpaidIn += g;
+      } else if (x.paid) {
+        m.out += g;
+      }
     });
     return map;
   }
@@ -74,7 +81,7 @@ window.GA = window.GA || {};
     const cells = [];
     for (let i = 0; i < 42; i++) {
       const st = stats[cur] || { in: 0, out: 0 };
-      cells.push({ iso: cur, n: Number(cur.slice(8)), inMonth: cur.startsWith(ym), today: cur === today(), inn: st.in, out: st.out });
+      cells.push({ iso: cur, n: Number(cur.slice(8)), inMonth: cur.startsWith(ym), today: cur === today(), inn: st.in, out: st.out, unpaidIn: st.unpaidIn || 0 });
       cur = E.addDays(cur, 1);
     }
     return cells;
@@ -222,8 +229,9 @@ window.GA = window.GA || {};
         <div class="tx-cal-grid">${cells.map((c) => {
           const cls = ["tx-cal-d", c.inMonth ? "" : "out", c.today ? "today" : "", dsel === c.iso ? "on" : "", (c.inn || c.out) ? "has" : ""].filter(Boolean).join(" ");
           const has = c.inn || c.out;
+          const pend = c.unpaidIn ? " pend" : "";
           const am = has
-            ? `<span class="tx-cal-out">${esc(calAmt(c.out, "out"))}</span><span class="tx-cal-in">${esc(calAmt(c.inn, "in"))}</span>`
+            ? `<span class="tx-cal-out">${esc(calAmt(c.out, "out"))}</span><span class="tx-cal-in${pend}" title="${c.unpaidIn ? esc(t("tx.inclUnpaid")) : ""}">${esc(calAmt(c.inn, "in"))}</span>`
             : `<span class="tx-cal-blank"></span>`;
           return `<button type="button" class="${cls}" data-txday="${c.iso}" ${c.inMonth ? "" : 'data-txm="' + c.iso.slice(0, 7) + '"'}><span class="tx-cal-n">${c.n}</span>${am}</button>`;
         }).join("")}</div>
