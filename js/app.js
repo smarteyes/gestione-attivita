@@ -142,6 +142,11 @@
           const r = await api.migrateImportedToBankV21();
           if (r && r.n) toast(t("imp.movedToBank", { n: String(r.n), v: money(r.gross) }));
         }
+        if (typeof api.migrateEnsureOtherAccountV22 === "function") {
+          const r2 = await api.migrateEnsureOtherAccountV22();
+          if (r2 && r2.created) toast(t("imp.otherAccountCreated"));
+          else if (r2 && r2.renamed) toast(t("imp.otherAccountRenamed"));
+        }
         S._migClosing = true;
       } catch (e) { /* riprova al prossimo caricamento */ }
     }

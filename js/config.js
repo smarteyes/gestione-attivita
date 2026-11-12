@@ -5,7 +5,7 @@
 window.GA = window.GA || {};
 
 GA.config = {
-  appVersion: 21,  // mostrata in Impostazioni; allineata a sw.js ga-vN e ?v=N in index.html
+  appVersion: 22,  // mostrata in Impostazioni; allineata a sw.js ga-vN e ?v=N in index.html
   // Scansione scontrini/fatture. extractor: "local" = OCR nel browser (offline, Tesseract.js + pdf.js inclusi);
   // "remote" = il backend legge il documento (es. servizio AI di visione) via POST {restBaseUrl}/scan. Nessuna chiamata online finché resta "local".
   scan: { extractor: "local", maxSide: 2000, keepSide: 1400, keepQuality: 0.62, psm: "4" },
@@ -43,7 +43,8 @@ GA.defaults = {
   },
   dedRates: () => [{ id: "d100", name: "100%", pct: 1 }, { id: "d50", name: "50%", pct: 0.5 }, { id: "d40", name: "40%", pct: 0.4 }, { id: "d0", name: "0%", pct: 0 }],
   accounts: (lang) => [{ id: "acc-cash", name: { it: "Contanti", en: "Cash", zh: "现金" }[lang] || "Contanti", kind: "account", icon: "cash", opening: 0, manual: "", active: true },
-    { id: "acc-bank", name: { it: "Banca", en: "Bank", zh: "银行" }[lang] || "Banca", kind: "account", icon: "bank", opening: 0, manual: "", active: true }],
+    { id: "acc-bank", name: { it: "Banca", en: "Bank", zh: "银行" }[lang] || "Banca", kind: "account", icon: "bank", opening: 0, manual: "", active: true },
+    { id: "acc-other", name: { it: "Altro incasso", en: "Other takings", zh: "其他收入" }[lang] || "Altro incasso", kind: "account", icon: "receipt", opening: 0, manual: "", active: true }],
   departments: (lang) => [{ id: "dep-gen", name: { it: "Generale", en: "General", zh: "综合" }[lang] || "Generale" }],
   categories: (lang) => {
     const N = {

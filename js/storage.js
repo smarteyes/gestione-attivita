@@ -409,6 +409,14 @@ window.GA = window.GA || {};
         write("book", Object.assign({}, b, { importedAccountFix: fix.slice(-500) }));
         return { n: plan.n, gross: plan.gross };
       },
+      migrateEnsureOtherAccountV22: async () => {
+        const u = reqU();
+        if (u.role !== "admin" || !GA.engine || !GA.engine.ensureOtherTakingsAccount) return { changed: 0 };
+        const lang = (book() || {}).lang || (GA.i18n && GA.i18n.lang) || "it";
+        const r = GA.engine.ensureOtherTakingsAccount(col("accounts"), lang);
+        if (r.changed) write("accounts", r.accounts);
+        return { changed: r.changed, created: !!r.created, renamed: !!r.renamed, id: (r.account || {}).id || "" };
+      },
       _initBook: initBook, _reloadSession: () => { session = read("session", null); },
     };
   }
@@ -523,6 +531,7 @@ window.GA = window.GA || {};
       migrateClosingV13: wrap(core.migrateClosingV13, true),
       migrateClosingV14: wrap(core.migrateClosingV14, true),
       migrateImportedToBankV21: wrap(core.migrateImportedToBankV21, true),
+      migrateEnsureOtherAccountV22: wrap(core.migrateEnsureOtherAccountV22, true),
       app: { get: async () => (token ? wrap(core.app.get, false)() : rpc("status").then((s) => ({ allowSelfRegistration: !!s.allowSelfRegistration }))), set: wrap(core.app.set, true) },
       accounts: W(core.accounts), departments: W(core.departments), vatRates: W(core.vatRates), dedRates: W(core.dedRates), categories: W(core.categories),
       transactions: W(core.transactions), transfers: W(core.transfers), clients: W(core.clients), events: W(core.events), payments: W(core.payments), invoices: W(core.invoices),

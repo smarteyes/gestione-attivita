@@ -289,10 +289,53 @@
       return !E.isRetiredAccount(a);
     });
   };
+  E.otherTakingsName = function (lang) {
+    return E.closingUnpaidName(lang);
+  };
+  E.isOtherTakingsAccount = function (a) {
+    if (!a) return false;
+    if (a.id === "acc-other" || String(a.id || "").indexOf("acc-other") === 0) return true;
+    const k = String(a.name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    return k === "altro incasso" || k === "other takings" || k === "\u5176\u4ed6\u6536\u5165";
+  };
+  E.ensureOtherTakingsAccount = function (accounts, lang) {
+    const name = E.closingUnpaidName(lang);
+    const list = (accounts || []).slice();
+    const sameName = function (a) {
+      const k = String((a && a.name) || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const n = String(name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      return k === n || E.isOtherTakingsAccount(a);
+    };
+    const found = list.find(sameName);
+    if (found) {
+      let changed = 0;
+      const out = list.map((a) => {
+        if (a.id !== found.id) return a;
+        const patch = {};
+        if (a.active === false) patch.active = true;
+        if (a.name !== name) patch.name = name;
+        if (!Object.keys(patch).length) return a;
+        changed++;
+        return Object.assign({}, a, patch);
+      });
+      return { accounts: out, account: out.find((a) => a.id === found.id), created: false, renamed: !!(found.name !== name), changed: changed };
+    }
+    const retired = list.find((a) => E.isRetiredAccount(a));
+    if (retired) {
+      const out = list.map((a) => a.id === retired.id ? Object.assign({}, a, { name: name, active: true, icon: a.icon || "receipt" }) : a);
+      return { accounts: out, account: out.find((a) => a.id === retired.id), created: false, renamed: true, changed: 1 };
+    }
+    const ids = new Set(list.map((a) => a.id));
+    let id = "acc-other", n = 0;
+    while (ids.has(id)) id = "acc-other-" + (++n);
+    const account = { id: id, name: name, kind: "account", icon: "receipt", opening: 0, manual: "", active: true };
+    return { accounts: list.concat([account]), account: account, created: true, renamed: false, changed: 1 };
+  };
   E.defaultAccountId = function (accounts, preferredId) {
     const list = E.selectableAccounts(accounts);
     if (preferredId && list.some((a) => a.id === preferredId)) return preferredId;
-    return (list[0] || {}).id || "";
+    const normal = list.filter((a) => !E.isOtherTakingsAccount(a));
+    return (normal[0] || list[0] || {}).id || "";
   };
   /* Conto banca (non cassa): per import estratto/Amazon. Mai Contanti. */
   E.isCashAccount = function (a) {
