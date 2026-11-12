@@ -116,9 +116,91 @@ window.GA = window.GA || {};
       </div></div>`;
   }
 
+  const VAT_LS = "ga_inv_vatId", VAT_PCT_LS = "ga_inv_vatPct", VAT_CUSTOM = "__custom__";
+  const fmtAmt = (n) => (n === "" || n == null || isNaN(Number(n)) ? "" : (Math.round(Number(n) * 100) / 100).toFixed(2));
+  function vatPctOf(form) {
+    const id = form.vatId && form.vatId.value;
+    if (id === VAT_CUSTOM) return Math.max(0, Number(form.vatPct && form.vatPct.value) || 0) / 100;
+    const v = (S().vatRates || []).find((x) => x.id === id);
+    if (!v || v.manual) return 0;
+    return Number(v.pct) || 0;
+  }
+  function bindVatCalc(form, rec, opt) {
+    if (!form || !form.gross || !form.vat || !form.net || !form.vatId) return;
+    const ro = opt && opt.readOnly;
+    const man = (S().vatRates || []).find((v) => v.manual);
+    const isCustom = () => form.vatId.value === VAT_CUSTOM || (man && form.vatId.value === man.id);
+    const showPct = () => { const row = form.vatPct && form.vatPct.closest("label"); if (row) row.hidden = !isCustom(); };
+    if (isCustom() && man && form.vatId.value === man.id) form.vatId.value = VAT_CUSTOM;
+    const g0 = rec && rec.gross !== "" && rec.gross != null ? Number(rec.gross) : NaN;
+    const v0 = rec && rec.vat !== "" && rec.vat != null ? Number(rec.vat) : NaN;
+    let lastAmt = "gross", manual = false;
+    if (!isNaN(g0) && !isNaN(v0)) {
+      const s = E.vatSplitFromGross(g0, vatPctOf(form));
+      if (Math.abs(s.vat - v0) > 0.011) {
+        manual = true;
+        form.net.value = fmtAmt(g0 - v0);
+      } else {
+        form.net.value = fmtAmt(s.net);
+        form.vat.value = fmtAmt(s.vat);
+        form.gross.value = fmtAmt(s.gross);
+      }
+    } else if (!isNaN(g0)) {
+      const s = E.vatSplitFromGross(g0, vatPctOf(form));
+      form.net.value = fmtAmt(s.net);
+      form.vat.value = fmtAmt(s.vat);
+      form.gross.value = fmtAmt(s.gross);
+    } else if (!isNaN(v0) && form.net.value) {
+      form.gross.value = fmtAmt(Number(form.net.value) + v0);
+    }
+    showPct();
+    if (ro) return;
+    const apply = (src) => {
+      const pct = vatPctOf(form);
+      const netN = Number(form.net.value), vatN = Number(form.vat.value), groN = Number(form.gross.value);
+      if (src === "rate") {
+        manual = false;
+        if (lastAmt === "net" && form.net.value !== "") return apply("net");
+        if (form.gross.value !== "") return apply("gross");
+        if (form.net.value !== "") return apply("net");
+        return;
+      }
+      if (src === "net") {
+        lastAmt = "net";
+        if (form.net.value === "") return;
+        if (manual) { form.gross.value = fmtAmt((isNaN(netN) ? 0 : netN) + (isNaN(vatN) ? 0 : vatN)); return; }
+        const s = E.vatSplitFromNet(netN, pct);
+        form.vat.value = fmtAmt(s.vat);
+        form.gross.value = fmtAmt(s.gross);
+        return;
+      }
+      if (src === "gross") {
+        lastAmt = "gross";
+        if (form.gross.value === "") return;
+        if (manual) { form.net.value = fmtAmt((isNaN(groN) ? 0 : groN) - (isNaN(vatN) ? 0 : vatN)); return; }
+        const s = E.vatSplitFromGross(groN, pct);
+        form.net.value = fmtAmt(s.net);
+        form.vat.value = fmtAmt(s.vat);
+        return;
+      }
+      if (src === "vat") {
+        manual = true;
+        if (lastAmt === "net" && form.net.value !== "") form.gross.value = fmtAmt((isNaN(netN) ? 0 : netN) + (isNaN(vatN) ? 0 : vatN));
+        else if (form.gross.value !== "") form.net.value = fmtAmt((isNaN(groN) ? 0 : groN) - (isNaN(vatN) ? 0 : vatN));
+      }
+    };
+    form.net.addEventListener("input", () => apply("net"));
+    form.gross.addEventListener("input", () => apply("gross"));
+    form.vat.addEventListener("input", () => apply("vat"));
+    form.vatId.addEventListener("change", () => { showPct(); apply("rate"); try { localStorage.setItem(VAT_LS, form.vatId.value); } catch (er) { /* ignore */ } });
+    if (form.vatPct) form.vatPct.addEventListener("input", () => { try { localStorage.setItem(VAT_PCT_LS, form.vatPct.value); } catch (er) { /* ignore */ } apply("rate"); });
+  }
+
   function form(id, preset) {
     const old = id ? (S().invoices || []).find((x) => x.id === id) : null;
     const B = S().book;
+    const lastVat = !old ? (localStorage.getItem("ga_inv_vatId") || "") : "";
+    let lastPct = !old ? (localStorage.getItem("ga_inv_vatPct") || "") : "";
     const r = Object.assign({
       supplier: "", number: "", invoiceDate: today(), dueDate: today(),
       gross: "", vat: "", vatId: B.vatDefaultOut, vatManual: "", dedId: B.dedDefault,
@@ -126,6 +208,14 @@ window.GA = window.GA || {};
       notes: "", attachmentId: "",
     }, old || {}, preset || {});
     if (preset && preset.gross != null) r.gross = preset.gross;
+    const knownIds = (S().vatRates || []).map((v) => v.id);
+    if (!old && !(preset && preset.vatId) && lastVat && (knownIds.includes(lastVat) || lastVat === "__custom__")) r.vatId = lastVat;
+    const manId = ((S().vatRates || []).find((v) => v.manual) || {}).id;
+    const startCustom = r.vatId === "__custom__" || (manId && r.vatId === manId);
+    if (startCustom && !lastPct && r.gross && r.vat !== "" && r.vat != null) {
+      const n0 = Number(r.gross) - Number(r.vat);
+      if (n0 > 0.004) lastPct = String(Math.round((Number(r.vat) / n0) * 10000) / 100);
+    }
     const ro = old && !canEdit(old) ? "disabled" : "";
     const cats = S().categories.filter((c) => c.type === "out" && (c.active !== false || c.id === r.categoryId));
     const accs = S().accounts.filter((a) => a.active !== false || a.id === r.accountId);
@@ -141,9 +231,11 @@ window.GA = window.GA || {};
           <label>${t("inv.number")}<input name="number" value="${esc(r.number)}" ${ro}></label>
           <label>${t("inv.invoiceDate")} *<input type="date" name="invoiceDate" required value="${esc(r.invoiceDate)}" ${ro}></label>
           <label>${t("inv.dueDate")} *<input type="date" name="dueDate" required value="${esc(r.dueDate || r.invoiceDate)}" ${ro}></label>
-          <label class="amount-in">${t("inv.gross")} *<input name="gross" type="number" inputmode="decimal" step="0.01" min="0.01" required value="${esc(r.gross)}" ${ro}></label>
+          <label>${t("tx.vat")}<select name="vatId" ${ro}>${S().vatRates.filter((v) => !v.manual).map((v) => `<option value="${v.id}" ${v.id === r.vatId ? "selected" : ""}>${esc(v.name)}</option>`).join("")}<option value="__custom__" ${r.vatId === "__custom__" || ((S().vatRates.find((v) => v.manual) || {}).id === r.vatId) ? "selected" : ""}>${t("inv.vatOther")}</option></select></label>
+          <label class="inv-vatpct" ${startCustom ? "" : "hidden"}>${t("inv.vatPct")}<input name="vatPct" type="number" inputmode="decimal" step="0.01" min="0" max="100" value="${esc(lastPct)}" ${ro}></label>
+          <label>${t("inv.net")}<input name="net" type="number" inputmode="decimal" step="0.01" min="0" ${ro}></label>
           <label>${t("inv.vat")}<input name="vat" type="number" inputmode="decimal" step="0.01" min="0" value="${esc(r.vat)}" ${ro}></label>
-          <label>${t("tx.vat")}<select name="vatId" ${ro}>${S().vatRates.map((v) => `<option value="${v.id}" ${v.id === r.vatId ? "selected" : ""}>${esc(v.name)}</option>`).join("")}</select></label>
+          <label class="amount-in">${t("inv.gross")} *<input name="gross" type="number" inputmode="decimal" step="0.01" min="0.01" required value="${esc(r.gross)}" ${ro}></label>
           <label>${t("tx.ded")}<select name="dedId" ${ro}>${S().dedRates.map((d) => `<option value="${d.id}" ${d.id === r.dedId ? "selected" : ""}>${esc(d.name)}</option>`).join("")}</select></label>
           <label class="full">${t("inv.category")}<select name="categoryId" ${ro}><option value="">${t("tx.noCat")}</option>${cats.map((c) => `<option value="${c.id}" ${c.id === r.categoryId ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label>
           <label class="full">${t("inv.account")}<select name="accountId" required ${ro}>${accs.map((a) => `<option value="${a.id}" ${a.id === r.accountId ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select></label>
@@ -166,9 +258,20 @@ window.GA = window.GA || {};
       }
     });
     GA.scan.bindInputs(m, () => Object.fromEntries(new FormData($("#invForm", m))), (preset) => { U().closeModal(); openFromScan(preset, old && old.id); });
+    bindVatCalc($("#invForm", m), r, { readOnly: !!ro });
     $("#invForm", m).onsubmit = async (e) => {
       e.preventDefault();
       const d = Object.fromEntries(new FormData(e.target));
+      const man = (S().vatRates || []).find((v) => v.manual);
+      if (d.vatId === "__custom__") {
+        try { localStorage.setItem("ga_inv_vatId", "__custom__"); localStorage.setItem("ga_inv_vatPct", d.vatPct || ""); } catch (er) { /* ignore */ }
+        if (man) d.vatId = man.id;
+        d.vatManual = d.vat;
+      } else {
+        try { localStorage.setItem("ga_inv_vatId", d.vatId || ""); } catch (er) { /* ignore */ }
+        d.vatManual = "";
+      }
+      delete d.net; delete d.vatPct;
       d.gross = d.gross; d.vat = d.vat;
       if (old) d.id = old.id;
       if (old) { d.txId = old.txId; d.paidAmount = old.paidAmount; d.status = old.status; d.paidDate = old.paidDate; d.paidAccountId = old.paidAccountId; d.payTxIds = old.payTxIds; d.attachmentId = old.attachmentId; }

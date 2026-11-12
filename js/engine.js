@@ -36,6 +36,19 @@
     const net = base * P;
     return { net, vat: (g - net) * P, ded: (g - net) * dedPct * P, grossPaid: g * P, vatTheo: (g - base) * dedPct };
   };
+  /* IVA in fattura: arrotonda al centesimo. Da imponibile (netto → IVA + lordo) o da totale (scorporo). */
+  E.roundCent = function (n) { return Math.round((Number(n) || 0) * 100) / 100; };
+  E.vatSplitFromNet = function (net, pct) {
+    const n = E.roundCent(net), p = Number(pct) || 0;
+    const vat = E.roundCent(n * p);
+    return { net: n, vat, gross: E.roundCent(n + vat) };
+  };
+  E.vatSplitFromGross = function (gross, pct) {
+    const g = E.roundCent(gross), p = Number(pct) || 0;
+    if (p <= 0) return { net: g, vat: 0, gross: g };
+    const n = E.roundCent(g / (1 + p));
+    return { net: n, vat: E.roundCent(g - n), gross: g };
+  };
   E.context = function (s) {
     const vat = {}, ded = {};
     (s.vatRates || []).forEach((r) => { vat[r.id] = { pct: num(r.pct), manual: !!r.manual }; });
