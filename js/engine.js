@@ -371,6 +371,26 @@
     });
     return { toPay: Math.round(toPay * 100) / 100, overdue: Math.round(overdue * 100) / 100, nOverdue, nOpen, nSoon };
   };
+  /* Data in cui la fattura conta nel calendario Movimenti: data fattura, altrimenti data di inserimento. */
+  E.invoiceCalendarDate = function (inv) {
+    const d = String((inv && inv.invoiceDate) || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    const c = String((inv && (inv.createdAt || inv.updatedAt)) || "").slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(c) ? c : "";
+  };
+  /* Totali fatture la cui data di calendario inizia con prefix (YYYY-MM oppure YYYY-MM-DD). */
+  E.invoicePeriodStats = function (list, prefix) {
+    const pre = String(prefix || "");
+    let gross = 0, unpaid = 0, n = 0;
+    (list || []).forEach((inv) => {
+      const d = E.invoiceCalendarDate(inv);
+      if (!pre || !d || d.indexOf(pre) !== 0) return;
+      n++;
+      gross += num(inv && inv.gross);
+      unpaid += E.invoiceRemaining(inv);
+    });
+    return { n, gross: Math.round(gross * 100) / 100, unpaid: Math.round(unpaid * 100) / 100 };
+  };
 
   if (typeof module !== "undefined" && module.exports) module.exports = E;
   else { root.GA = root.GA || {}; root.GA.engine = E; }

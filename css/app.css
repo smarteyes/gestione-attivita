@@ -427,6 +427,8 @@ html.theme-macaron .tx-cal-d.on .tx-cal-in,
 .tx-cal-d.on .tx-cal-in { color: var(--on-accent); }
 .tx-cal-d:active { filter: brightness(.97); }
 .tx-cal-foot { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 0 2px; }
+.tx-cal-inv { margin: 10px 2px 0; padding-top: 10px; border-top: 1px solid var(--line2); font-size: .88rem; color: var(--ink2); line-height: 1.35; }
+.tx-cal-foot + .tx-cal-inv { margin-top: 8px; }
 .tx-dayhead { position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 12px 8px; background: var(--card); border-bottom: 1px solid var(--line); box-shadow: 0 1px 0 var(--card); }
 .txlist.full-list .tx-dayhead { padding-left: 12px; padding-right: 12px; }
 .tx-dayhead-l b { font-weight: 600; font-size: .92rem; text-transform: capitalize; }

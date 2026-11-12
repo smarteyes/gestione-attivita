@@ -98,14 +98,15 @@
   }
 
   /* ---------- GUSCIO ---------- */
-  const NAV = [["home", "home"], ["closing", "moon"], ["tx", "list"], ["month", "chart"], ["year", "star"], ["accounts", "wallet"], ["invoices", "receipt"], ["calendar", "calendar"], ["events", "event"], ["settings", "settings"]];
+  const NAV = [["home", "home"], ["tx", "list"], ["month", "chart"], ["year", "star"], ["accounts", "wallet"], ["invoices", "receipt"], ["calendar", "calendar"], ["events", "event"], ["settings", "settings"]];
   const navHref = (k) => (k === "month" ? "#/month/" + E.today().slice(0, 7) : k === "year" ? "#/year/" + E.fiscalYearStart(E.today(), S.book.fyStart).slice(0, 4) : "#/" + k);
   function shell(view, content) {
     const company = S.book.company;
+    const navOn = (k) => view === k || (k === "tx" && view === "closing");
     app().innerHTML = `<div class="layout">
       <aside class="side">
         ${brand()}${company ? `<div class="company">${esc(company)}</div>` : ""}
-        <nav>${NAV.map(([k, ic]) => `<a href="${navHref(k)}" class="${view === k ? "active" : ""}">${I(ic)}<span>${t("nav." + k)}</span></a>`).join("")}
+        <nav>${NAV.map(([k, ic]) => `<a href="${navHref(k)}" class="${navOn(k) ? "active" : ""}">${I(ic)}<span>${t("nav." + k)}</span></a>`).join("")}
           ${isAdmin() ? `<a href="#/users" class="${view === "users" ? "active" : ""}">${I("people")}<span>${t("nav.users")}</span></a>` : ""}</nav>
         <div class="side-foot">${langSelect()}<a href="#/profile" class="me ${view === "profile" ? "active" : ""}">${I("user")}<span>${esc(S.user.displayName)}<small>${t("o.role." + S.user.role)}</small></span></a>
           <button class="link-btn" id="logout">${I("logout")}<span>${t("nav.logout")}</span></button></div>
@@ -113,7 +114,7 @@
       <main class="main" id="main">${content}</main>
       <button class="fab" id="fab" aria-label="${t("sc.fab")}">${I("plus")}</button>
       <nav class="tabbar">
-        ${[["home", "home"], ["tx", "list"]].map(([k, ic]) => `<a href="${navHref(k)}" class="${view === k ? "active" : ""}">${I(ic)}<span>${t("nav." + k)}</span></a>`).join("")}
+        ${[["home", "home"], ["tx", "list"]].map(([k, ic]) => `<a href="${navHref(k)}" class="${navOn(k) ? "active" : ""}">${I(ic)}<span>${t("nav." + k)}</span></a>`).join("")}
         <span class="tab-gap"></span>
         ${(() => { const n = (E.invoiceTotals(S.invoices || [], E.today()) || {}).nOverdue || 0; const b = n ? `<b class="tab-badge" aria-label="${n} ${t("inv.overdue")}">${n > 99 ? "99+" : n}</b>` : ""; return `<a href="${navHref("invoices")}" class="${view === "invoices" ? "active" : ""}">${I("receipt")}${b}<span>${t("nav.invoices")}</span></a>`; })()}
         <a href="#/more" class="${["more", "month", "year", "accounts", "calendar", "events", "event", "settings", "users", "profile"].includes(view) ? "active" : ""}">${I("menu")}<span>${t("nav.more")}</span></a>

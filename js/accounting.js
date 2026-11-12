@@ -58,14 +58,21 @@ window.GA = window.GA || {};
     else if (!S().f.period) rows = rows.filter((x) => (x.date || "").startsWith(mk));
     return rows;
   }
-  function dayStatsMap(txs) {
+  function dayStatsMap(txs, invoices) {
     const map = {};
     txs.forEach((x) => {
       if (!x.date) return;
       const m = map[x.date] || (map[x.date] = { in: 0, out: 0 });
       const g = Number(x.gross) || 0;
       if (x.type === "in") m.in += g; // pagate + pianificate
-      else if (x.paid) m.out += g;
+      else if (x.paid) m.out += g; // le spese pianificate no: le fatture non pagate si aggiungono sotto per data fattura
+    });
+    (invoices || []).forEach((inv) => {
+      const d = E.invoiceCalendarDate(inv);
+      const rem = E.invoiceRemaining(inv);
+      if (!d || rem <= 0.004) return; // la parte già pagata è già nel movimento
+      const m = map[d] || (map[d] = { in: 0, out: 0 });
+      m.out += rem;
     });
     return map;
   }
@@ -86,7 +93,8 @@ window.GA = window.GA || {};
     const flush = () => {
       if (!cur) return;
       const dayIn = buf.filter((x) => x.type === "in" && x.paid).reduce((s, x) => s + x.gross, 0);
-      const dayOut = buf.filter((x) => x.type === "out" && x.paid).reduce((s, x) => s + x.gross, 0);
+      const dayOut = buf.filter((x) => x.type === "out" && x.paid).reduce((s, x) => s + x.gross, 0)
+        + ((S().f && S().f.type) === "in" ? 0 : (E.invoicePeriodStats(S().invoices || [], cur).unpaid || 0));
       const tot = dayIn - dayOut;
       html += `<div class="tx-dayhead" role="heading" aria-level="3"><span class="tx-dayhead-l"><b>${esc(dayHeading(cur))}</b></span><small class="tx-dayhead-r ${tot < 0 ? "neg" : ""}">${M(tot)}</small></div>`;
       html += buf.map((x) => txItem(x, compact)).join(""); buf = [];
@@ -199,7 +207,11 @@ window.GA = window.GA || {};
     const nFilters = ["paid", "period", "accountId", "deptId", "categoryId", "ref", "q"].filter((k) => F[k]).length + (dsel ? 1 : 0);
     // totali calendario: stessi filtri, senza giorno selezionato
     const monthRows = (() => { const hold = S()._txDay; S()._txDay = null; const r = filteredTx(); S()._txDay = hold; return r; })();
-    const cells = monthCalCells(mk, dayStatsMap(monthRows));
+    const invsForCal = F.type === "in" ? [] : (S().invoices || []);
+    const cells = monthCalCells(mk, dayStatsMap(monthRows, invsForCal));
+    const invMonth = E.invoicePeriodStats(invsForCal, mk);
+    const invDay = dsel ? E.invoicePeriodStats(invsForCal, dsel) : { n: 0 };
+    const invLine = (st, key) => st.n ? `<p class="tx-cal-inv">${t(key, { v: M(st.gross), y: M(st.unpaid) })}</p>` : "";
     const wds = weekDayLabels();
     const cal = `<section class="card tx-cal-card">
       <div class="stepper tx-month"><button type="button" class="icon-btn" data-txm="${prevM}" aria-label="prev">${I("left")}</button><b>${esc(U().monthName(mk))}</b><button type="button" class="icon-btn" data-txm="${nextM}" aria-label="next">${I("right")}</button></div>
@@ -214,9 +226,11 @@ window.GA = window.GA || {};
           return `<button type="button" class="${cls}" data-txday="${c.iso}" ${c.inMonth ? "" : 'data-txm="' + c.iso.slice(0, 7) + '"'}><span class="tx-cal-n">${c.n}</span>${am}</button>`;
         }).join("")}</div>
       </div>
-      ${dsel ? `<div class="tx-cal-foot"><button type="button" class="btn ghost sm" data-dayclear>${t("tx.allMonth")}</button><small class="muted">${esc(dayHeading(dsel))}</small></div>` : ""}
+      ${invLine(invMonth, "tx.monthInvoices")}
+      ${dsel ? `<div class="tx-cal-foot"><button type="button" class="btn ghost sm" data-dayclear>${t("tx.allMonth")}</button><small class="muted">${esc(dayHeading(dsel))}</small></div>${invLine(invDay, "tx.dayInvoices")}` : ""}
     </section>`;
     return `<header class="page-head"><h1>${t("nav.tx")}</h1><div class="head-actions">
+        <a class="btn ghost sm" href="#/closing">${I("moon")}<span>${t("cl.title")}</span></a>
         <button class="btn ghost sm" data-rec>${I("repeat")}<span>${t("tx.recurrence")}</span></button>
         <button class="btn primary sm" data-new>${I("plus")}<span>${F.type === "out" ? t("tx.newOut") : t("tx.newIn")}</span></button></div></header>
       ${cal}
