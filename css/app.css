@@ -536,6 +536,7 @@ html.theme-macaron .qm-item { border-color: transparent; box-shadow: var(--shado
 .inv-home small { color: var(--mute); font-size: .82rem; }
 .inv-totals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px 16px; }
 .inv-totals small { display: block; margin-top: 2px; }
+.inv-filters { margin-bottom: var(--gap); }
 .inv-row { align-items: flex-start; }
 .inv-row.overdue b, .inv-row.overdue .inv-amt b { color: var(--neg); }
 .inv-row.soon .li-main small { color: #c27a2a; font-weight: 600; }

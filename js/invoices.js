@@ -14,14 +14,54 @@ window.GA = window.GA || {};
   const remaining = (inv) => E.invoiceRemaining(inv);
   const dueState = (inv) => E.invoiceDueState(inv, today());
 
-  function filterList(tab) {
+  function foldSupplier(s) {
+    return String(s || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[''`´]/g, "")
+      .replace(/[.\/,&-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+  function normSupplier(s) {
+    return foldSupplier(s)
+      .replace(/\b(?:s r l(?:\s?s)?|srls?|s p a|spa|s n c|snc|s a s|sas|ltd|limited|gmbh)\s*$/, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  function supplierMatch(name, q) {
+    const qf = foldSupplier(q);
+    if (!qf) return true;
+    const nf = foldSupplier(name);
+    if (nf.includes(qf)) return true;
+    const qn = normSupplier(q), nn = normSupplier(name);
+    return !!(qn && nn && (nn === qn || nn.includes(qn) || qn.includes(nn)));
+  }
+  function supplierOptions(list) {
+    const map = new Map();
+    (list || []).forEach((inv) => {
+      const raw = String(inv.supplier || "").trim();
+      if (!raw) return;
+      const k = normSupplier(raw) || foldSupplier(raw);
+      const cur = map.get(k);
+      if (!cur) map.set(k, { name: raw, n: 1 });
+      else {
+        cur.n++;
+        if (raw.length < cur.name.length) cur.name = raw;
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "it", { sensitivity: "base" }));
+  }
+
+  function filterList(tab, q) {
     const list = (S().invoices || []).slice();
     return list.filter((inv) => {
       const st = dueState(inv);
-      if (tab === "paid") return st === "paid";
-      if (tab === "overdue") return st === "overdue";
-      if (tab === "open") return st !== "paid";
-      return true;
+      if (tab === "paid" && st !== "paid") return false;
+      if (tab === "overdue" && st !== "overdue") return false;
+      if (tab === "open" && st === "paid") return false;
+      return supplierMatch(inv.supplier, q);
     }).sort((a, b) => {
       const pa = dueState(a) === "paid", pb = dueState(b) === "paid";
       if (pa !== pb) return pa ? 1 : -1;
@@ -32,17 +72,33 @@ window.GA = window.GA || {};
   function view(parts) {
     const tab = ["open", "overdue", "paid", "all"].includes(parts[1]) ? parts[1] : "open";
     S()._invTab = tab;
-    const rows = filterList(tab);
-    const tot = E.invoiceTotals(S().invoices || [], today());
+    const q = S()._invQ || "";
+    const all = S().invoices || [];
+    const rows = filterList(tab, q);
+    const tot = E.invoiceTotals(q ? rows : all, today());
+    const sumGross = Math.round(rows.reduce((s, inv) => s + Number(inv.gross || 0), 0) * 100) / 100;
     const tabs = [["open", "inv.open"], ["overdue", "inv.overdue"], ["paid", "inv.paid"], ["all", "inv.all"]];
+    const opts = supplierOptions(all);
+    const totals = q
+      ? `<div><span class="label">${t("dash.total")}</span><b>${M(sumGross)}</b><small class="muted">${t("inv.found", { n: String(rows.length), v: M(sumGross) })}</small></div>
+        <div><span class="label">${t("inv.toPay")}</span><b>${M(tot.toPay)}</b></div>`
+      : `<div><span class="label">${t("inv.toPay")}</span><b>${M(tot.toPay)}</b></div>
+        <div><span class="label">${t("inv.overdueTot")}</span><b class="${tot.overdue ? "neg" : ""}">${M(tot.overdue)}</b><small class="muted">${tot.nOverdue} ${t("inv.overdue").toLowerCase()}</small></div>`;
+    const filters = all.length ? `<div class="filters card inv-filters">
+        <input type="search" data-invq list="invSuppliers" placeholder="${t("inv.search")}" value="${esc(q)}" autocomplete="off" enterkeyhint="search">
+        <datalist id="invSuppliers">${opts.map((o) => `<option value="${esc(o.name)}"></option>`).join("")}</datalist>
+        <select data-invsup aria-label="${t("inv.supplier")}"><option value="">${t("inv.allSuppliers")}</option>
+          ${opts.map((o) => `<option value="${esc(o.name)}" ${normSupplier(o.name) && normSupplier(o.name) === normSupplier(q) ? "selected" : ""}>${esc(o.name)}</option>`).join("")}</select>
+      </div>` : "";
+    const empty = `<div class="card empty-state">${I("receipt", "big")}<p>${t(q ? "inv.noMatch" : "inv.empty")}</p>${q ? "" : `<button class="btn primary" data-invnew>${I("plus")}${t("inv.new")}</button>`}</div>`;
     return `<header class="page-head"><h1>${t("inv.title")}</h1><div class="head-actions">
         <button type="button" class="btn ghost sm" data-invscan>${I("camera")}<span>${t("inv.scan")}</span></button>
         <button type="button" class="btn primary sm" data-invnew>${I("plus")}<span>${t("inv.new")}</span></button>
       </div></header>
-      <div class="totals card inv-totals"><div><span class="label">${t("inv.toPay")}</span><b>${M(tot.toPay)}</b></div>
-        <div><span class="label">${t("inv.overdueTot")}</span><b class="${tot.overdue ? "neg" : ""}">${M(tot.overdue)}</b><small class="muted">${tot.nOverdue} ${t("inv.overdue").toLowerCase()}</small></div></div>
+      <div class="totals card inv-totals">${totals}</div>
+      ${filters}
       <div class="seg scroll">${tabs.map(([k, l]) => `<a href="#/invoices/${k}" class="${tab === k ? "on" : ""}">${t(l)}</a>`).join("")}</div>
-      ${rows.length ? `<div class="card list inv-list">${rows.map(row).join("")}</div>` : `<div class="card empty-state">${I("receipt", "big")}<p>${t("inv.empty")}</p><button class="btn primary" data-invnew>${I("plus")}${t("inv.new")}</button></div>`}`;
+      ${rows.length ? `<div class="card list inv-list">${rows.map(row).join("")}</div>` : empty}`;
   }
 
   function row(inv) {
@@ -79,7 +135,8 @@ window.GA = window.GA || {};
         ${sc ? `<div class="scan-head">${sc.image ? `<button type="button" class="scan-thumb" data-zoom aria-label="${t("sc.photo")}"><img src="${sc.image.dataUrl}" alt=""></button>` : ""}<div><b>${t("sc.reviewHint")}</b></div></div>` : ""}
         ${!old ? GA.scan.buttons() : ""}
         ${r.attachmentId && !sc ? `<button type="button" class="btn ghost scan-see" data-invphoto>${I("clip")}${t("inv.attach")}</button>` : ""}
-        <label>${t("inv.supplier")} *<input name="supplier" required value="${esc(r.supplier)}" ${ro}></label>
+        <label>${t("inv.supplier")} *<input name="supplier" required value="${esc(r.supplier)}" list="invFormSuppliers" autocomplete="off" ${ro}></label>
+        <datalist id="invFormSuppliers">${supplierOptions(S().invoices).map((o) => `<option value="${esc(o.name)}"></option>`).join("")}</datalist>
         <div class="form-grid">
           <label>${t("inv.number")}<input name="number" value="${esc(r.number)}" ${ro}></label>
           <label>${t("inv.invoiceDate")} *<input type="date" name="invoiceDate" required value="${esc(r.invoiceDate)}" ${ro}></label>
@@ -176,6 +233,16 @@ window.GA = window.GA || {};
   }
 
   function bind(main) {
+    const qEl = $("[data-invq]", main);
+    if (qEl) qEl.addEventListener("input", () => {
+      S()._invQ = qEl.value;
+      clearTimeout(S()._invQt);
+      S()._invQt = setTimeout(() => U().route().then(() => {
+        const s = $("[data-invq]"); if (!s) return; s.focus(); const n = s.value.length; s.setSelectionRange(n, n);
+      }), 250);
+    });
+    const sel = $("[data-invsup]", main);
+    if (sel) sel.addEventListener("change", () => { S()._invQ = sel.value; U().route(); });
     main.addEventListener("click", (e) => {
       const el = (s) => e.target.closest(s);
       if (el("[data-invnew]")) { e.stopPropagation(); return form(null); }
@@ -193,5 +260,5 @@ window.GA = window.GA || {};
     });
   }
 
-  GA.invoicesUI = { view, bind, form, payForm, homeCard, openFromScan };
+  GA.invoicesUI = { view, bind, form, payForm, homeCard, openFromScan, normSupplier, supplierMatch };
 })();
