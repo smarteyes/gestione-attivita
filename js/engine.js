@@ -294,6 +294,88 @@
     if (preferredId && list.some((a) => a.id === preferredId)) return preferredId;
     return (list[0] || {}).id || "";
   };
+  /* Conto banca (non cassa): per import estratto/Amazon. Mai Contanti. */
+  E.isCashAccount = function (a) {
+    if (!a) return false;
+    if (a.id === "acc-cash") return true;
+    const n = String(a.name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    if (n === "contanti" || n === "cash" || n === "cassa" || n === "\u73b0\u91d1") return true;
+    return (a.icon || "") === "cash";
+  };
+  E.bankAccount = function (accounts, keepId) {
+    const list = E.selectableAccounts(accounts, keepId).filter((a) => !E.isCashAccount(a));
+    const score = function (a) {
+      const n = String(a.name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const icon = a.icon || "", kind = a.kind || "";
+      let s = 0;
+      if (a.id === "acc-bank") s += 80;
+      if (icon === "bank") s += 40;
+      if (/banca|\bbank\b|bper|unicredit|intesa|monte dei paschi|bpm|poste|iban|conto corrente|c\/c\b/.test(n)) s += 50;
+      if (/carta|\bcard\b|visa|mastercard|credit/.test(n) || kind === "card" || icon === "card") s += 20;
+      else if (kind !== "card" && icon !== "card") s += 5;
+      return s;
+    };
+    const ranked = list.map((a) => ({ a: a, s: score(a) })).sort((x, y) => y.s - x.s || String(x.a.name).localeCompare(String(y.a.name)));
+    if (ranked.length && ranked[0].s > 0) return ranked[0].a;
+    return list[0] || null;
+  };
+  E.bankAccountId = function (accounts, keepId) {
+    return (E.bankAccount(accounts, keepId) || {}).id || "";
+  };
+  E.AMAZON_ORDER_RE = /^\d{3}-\d{7}-\d{7}$/;
+  /* Solo righe degli import Amazon/estratto ancora su cassa: piano di spostamento verso Banca. */
+  E.planImportedCashToBank = function (txs, accounts, book) {
+    const cashIds = new Set((accounts || []).filter(E.isCashAccount).map((a) => a.id));
+    cashIds.add("acc-cash");
+    const bankId = E.bankAccountId(accounts);
+    if (!bankId) return { moves: [], bankId: "", gross: 0, n: 0 };
+    const already = new Set((((book || {}).importedAccountFix) || []).map((x) => x && x.id).filter(Boolean));
+    const moves = [], seen = new Set();
+    const add = function (t, source) {
+      if (!t || !t.id || seen.has(t.id) || already.has(t.id)) return;
+      if (t.accountId === bankId || !cashIds.has(t.accountId)) return;
+      seen.add(t.id);
+      moves.push({ id: t.id, from: t.accountId, to: bankId, gross: Math.abs(Number(t.gross) || 0), date: t.date || "", source: source });
+    };
+    const amzIds = new Set((((book || {}).importedAmazonOrders) || []).map((x) => x && String(x.id || "").trim()).filter(Boolean));
+    (txs || []).forEach((t) => {
+      if (!t) return;
+      const ref = String(t.ref || "").trim();
+      const notes = String(t.notes || ""), desc = String(t.desc || "");
+      const style = /^Amazon\b/i.test(desc) || /^Amazon\s/i.test(notes);
+      if (amzIds.has(ref) || (style && E.AMAZON_ORDER_RE.test(ref))) add(t, "amazon");
+    });
+    const WINDOW = 15 * 60 * 1000;
+    (((book || {}).importedStatements) || []).forEach((st) => {
+      if (!st) return;
+      if (st.accountId && !cashIds.has(st.accountId)) return;
+      const at = Date.parse(st.at || "");
+      if (!at || isNaN(at)) return;
+      const n = Math.max(0, Number(st.n) || 0);
+      const cand = (txs || []).filter((t) => {
+        if (!t || seen.has(t.id) || already.has(t.id)) return false;
+        if (!cashIds.has(t.accountId) || t.accountId === bankId) return false;
+        if (t.paid !== true || t.invoiceId || t.closing) return false;
+        const c = Date.parse(t.createdAt || "");
+        return c && !isNaN(c) && Math.abs(c - at) <= WINDOW;
+      }).sort((a, b) => Math.abs(Date.parse(a.createdAt) - at) - Math.abs(Date.parse(b.createdAt) - at));
+      (n ? cand.slice(0, n) : cand).forEach((t) => add(t, "bank"));
+    });
+    const gross = Math.round(moves.reduce((s, m) => s + m.gross, 0) * 100) / 100;
+    return { moves: moves, bankId: bankId, gross: gross, n: moves.length };
+  };
+  E.applyImportedCashToBank = function (txs, plan) {
+    const by = Object.create(null);
+    ((plan && plan.moves) || []).forEach((m) => { by[m.id] = m; });
+    let changed = 0;
+    const transactions = (txs || []).map((t) => {
+      const m = t && by[t.id];
+      if (!m || t.accountId === m.to) return t;
+      changed++;
+      return Object.assign({}, t, { accountId: m.to });
+    });
+    return { transactions: transactions, changed: changed };
+  };
   E.closingUnpaidName = function (lang) {
     return ({ it: "Altro incasso", en: "Other takings", zh: "其他收入" }[lang] || "Altro incasso");
   };

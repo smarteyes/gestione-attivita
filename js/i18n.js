@@ -288,3 +288,14 @@ GA.tl = function (lang, path) { const prev = GA.i18n.lang; GA.i18n.lang = lang; 
   const merge = (a, b) => { Object.keys(b).forEach((k) => { if (b[k] && typeof b[k] === "object") { a[k] = a[k] || {}; merge(a[k], b[k]); } else a[k] = b[k]; }); };
   Object.keys(add).forEach((l) => merge(GA.dict[l], add[l]));
 })();
+
+/* ---- Spostamento import da Contanti a Banca ---- */
+(function () {
+  const add = {
+    it: { imp: { movedToBank: "Spostati {n} movimenti importati da Contanti a Banca ({v})" } },
+    en: { imp: { movedToBank: "Moved {n} imported transactions from Cash to Bank ({v})" } },
+    zh: { imp: { movedToBank: "已将 {n} 笔导入记录从现金转到银行（{v}）" } },
+  };
+  const merge = (a, b) => { Object.keys(b).forEach((k) => { if (b[k] && typeof b[k] === "object") { a[k] = a[k] || {}; merge(a[k], b[k]); } else a[k] = b[k]; }); };
+  Object.keys(add).forEach((l) => merge(GA.dict[l], add[l]));
+})();

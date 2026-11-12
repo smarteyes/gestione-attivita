@@ -138,6 +138,10 @@
       try {
         if (typeof api.migrateClosingV13 === "function") await api.migrateClosingV13();
         if (typeof api.migrateClosingV14 === "function") await api.migrateClosingV14();
+        if (typeof api.migrateImportedToBankV21 === "function") {
+          const r = await api.migrateImportedToBankV21();
+          if (r && r.n) toast(t("imp.movedToBank", { n: String(r.n), v: money(r.gross) }));
+        }
         S._migClosing = true;
       } catch (e) { /* riprova al prossimo caricamento */ }
     }

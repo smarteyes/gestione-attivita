@@ -15,8 +15,9 @@ window.GA = window.GA || {};
     return (E.selectableAccounts ? E.selectableAccounts(S().accounts, keepId) : (S().accounts || []).filter((a) => a.active !== false));
   }
   function defAccount() {
-    const accs = selectable();
-    return (E.defaultAccountId && accs.find((a) => a.id === E.defaultAccountId(accs))) || accs.find((a) => /banca|bank|bper/i.test(a.name || "")) || accs.find((a) => a.id === "acc-bank") || accs[0] || {};
+    if (E.bankAccount) return E.bankAccount(S().accounts) || {};
+    const accs = selectable().filter((a) => a.id !== "acc-cash" && !/^(contanti|cash|cassa)$/i.test(a.name || ""));
+    return accs.find((a) => /banca|bank|bper/i.test(a.name || "")) || accs.find((a) => a.id === "acc-bank") || accs[0] || {};
   }
   function catOptions(sel) {
     return `<option value="">${esc(t("tx.noCat"))}</option>` + (S().categories || []).filter((c) => c.type === "out" && (c.active !== false || c.id === sel)).map((c) => `<option value="${esc(c.id)}" ${c.id === sel ? "selected" : ""}>${esc(c.name)}</option>`).join("");

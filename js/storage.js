@@ -391,6 +391,24 @@ window.GA = window.GA || {};
         }
         return { transactions: nTx, book: !!(isAdmin && applied.bookChanged), vat: !!(isAdmin && applied.createdRate) };
       },
+      migrateImportedToBankV21: async () => {
+        const u = reqU();
+        if (u.role !== "admin" || !GA.engine || !GA.engine.planImportedCashToBank) return { n: 0, gross: 0 };
+        const plan = GA.engine.planImportedCashToBank(col("transactions"), col("accounts"), book() || {});
+        if (!plan.n) return { n: 0, gross: 0 };
+        const txM = GA.engine.applyImportedCashToBank(col("transactions"), plan);
+        if (txM.changed) {
+          const stamped = txM.transactions.map((t, i) => {
+            const o = col("transactions")[i];
+            return (o && t !== o) ? Object.assign({}, t, { updatedAt: now(), updatedBy: u.id }) : t;
+          });
+          write("transactions", stamped);
+        }
+        const b = book() || {};
+        const fix = (b.importedAccountFix || []).concat(plan.moves.map((m) => Object.assign({ at: now() }, m)));
+        write("book", Object.assign({}, b, { importedAccountFix: fix.slice(-500) }));
+        return { n: plan.n, gross: plan.gross };
+      },
       _initBook: initBook, _reloadSession: () => { session = read("session", null); },
     };
   }
@@ -504,6 +522,7 @@ window.GA = window.GA || {};
       book: W(core.book),
       migrateClosingV13: wrap(core.migrateClosingV13, true),
       migrateClosingV14: wrap(core.migrateClosingV14, true),
+      migrateImportedToBankV21: wrap(core.migrateImportedToBankV21, true),
       app: { get: async () => (token ? wrap(core.app.get, false)() : rpc("status").then((s) => ({ allowSelfRegistration: !!s.allowSelfRegistration }))), set: wrap(core.app.set, true) },
       accounts: W(core.accounts), departments: W(core.departments), vatRates: W(core.vatRates), dedRates: W(core.dedRates), categories: W(core.categories),
       transactions: W(core.transactions), transfers: W(core.transfers), clients: W(core.clients), events: W(core.events), payments: W(core.payments), invoices: W(core.invoices),
