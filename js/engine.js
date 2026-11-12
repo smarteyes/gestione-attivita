@@ -273,6 +273,27 @@
 
   /* ---------- Chiusura serata: canale interno "unpaid" (etichetta: Altro incasso) ---------- */
   E.CLOSING_UNPAID_OLD_NAMES = ["Non riscosso", "Not collected", "未收款"];
+  /* Conto ritirato: resta nei dati storici, nascosto nei selettori delle nuove registrazioni. */
+  E.isRetiredAccount = function (a) {
+    const n = String((a && a.name) || "").trim();
+    if (!n) return false;
+    if (E.CLOSING_UNPAID_OLD_NAMES.indexOf(n) >= 0) return true;
+    const k = n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    return k === "non riscosso" || k === "not collected";
+  };
+  E.selectableAccounts = function (accounts, keepId) {
+    return (accounts || []).filter((a) => {
+      if (!a) return false;
+      if (keepId && a.id === keepId) return true;
+      if (a.active === false) return false;
+      return !E.isRetiredAccount(a);
+    });
+  };
+  E.defaultAccountId = function (accounts, preferredId) {
+    const list = E.selectableAccounts(accounts);
+    if (preferredId && list.some((a) => a.id === preferredId)) return preferredId;
+    return (list[0] || {}).id || "";
+  };
   E.closingUnpaidName = function (lang) {
     return ({ it: "Altro incasso", en: "Other takings", zh: "其他收入" }[lang] || "Altro incasso");
   };

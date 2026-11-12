@@ -31,12 +31,12 @@ window.GA = window.GA || {};
       <label>${t("set.dedDef")}${sel("dd", S().dedRates, b.dedDefault, `data-book="dedDefault" ${dis()}`)}</label></div></section>
     <section class="card pad" id="setClosing"><h3>${t("cl.channels")}</h3><p class="muted small">${t("cl.channelsHint")}</p>
       ${GA.closingChannels.map(([ch, K, ic]) => `<div class="erow cl-map"><span class="icon-chip">${I(ic)}</span><b class="cl-map-l">${t("cl." + K)}</b>
-        <label class="grow">${t("tx.account")}${sel("ca" + K, S().accounts.filter((a) => a.active !== false), b["closingAcc" + K], `data-book="closingAcc${K}" ${dis()}`)}</label>
+        <label class="grow">${t("tx.account")}${sel("ca" + K, (GA.engine.selectableAccounts ? GA.engine.selectableAccounts(S().accounts, b["closingAcc" + K]) : S().accounts.filter((a) => a.active !== false)), b["closingAcc" + K], `data-book="closingAcc${K}" ${dis()}`)}</label>
         <label class="grow">${t("tx.category")}${sel("cc" + K, S().categories.filter((c) => c.type === "in"), b["closingCat" + K], `data-book="closingCat${K}" ${dis()}`, t("tx.noCat"))}</label>
         <label class="grow">${t("tx.vat")}${sel("cv" + K, S().vatRates.filter((v) => !v.manual), (E.closingVatId && E.closingVatId(b, K, S().vatRates)) || b["closingVat" + K], `data-book="closingVat${K}" ${dis()}`)}</label></div>`).join("")}</section>
     <section class="card pad"><h3>${t("set.events")}</h3>
       <label class="switch-row"><input type="checkbox" data-book="eventsAutoEntry" data-bool ${b.eventsAutoEntry ? "checked" : ""} ${dis()}><span>${t("set.eventsAuto")}</span></label>
-      <div class="form-grid"><label>${t("tx.account")}${sel("ea", S().accounts.filter((a) => a.active !== false), b.eventsEntryAccount, `data-book="eventsEntryAccount" ${dis()}`)}</label>
+      <div class="form-grid"><label>${t("tx.account")}${sel("ea", (GA.engine.selectableAccounts ? GA.engine.selectableAccounts(S().accounts, b.eventsEntryAccount) : S().accounts.filter((a) => a.active !== false)), b.eventsEntryAccount, `data-book="eventsEntryAccount" ${dis()}`)}</label>
       <label>${t("set.eventsCat")}${sel("ec", S().categories.filter((c) => c.type === "in"), b.eventsEntryCategory, `data-book="eventsEntryCategory" ${dis()}`, t("tx.noCat"))}</label>
       <label>${t("tx.vat")}${sel("ev", S().vatRates.filter((v) => !v.manual), b.eventsEntryVat, `data-book="eventsEntryVat" ${dis()}`)}</label></div></section>`}`;
   }

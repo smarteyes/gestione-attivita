@@ -187,7 +187,7 @@ window.GA = window.GA || {};
     else { p.vatId = B.vatDefaultOut; c.vatId = 0; }
     const L = learn(f.supplier.value, f.piva.value);
     if (L) { p.categoryId = L.tx.categoryId; if (L.tx.dedId) p.dedId = L.tx.dedId; if (L.tx.deptId) p.deptId = L.tx.deptId; c.categoryId = L.conf; } else { p.categoryId = ""; c.categoryId = 0; }
-    const accs = S().accounts.filter((a) => a.active !== false); const byKind = (k) => (accs.find((a) => a.icon === k) || {}).id;
+    const accs = (GA.engine.selectableAccounts ? GA.engine.selectableAccounts(S().accounts) : S().accounts.filter((a) => a.active !== false)); const byKind = (k) => (accs.find((a) => a.icon === k) || {}).id;
     const pay = f.payment.value;
     const acc = pay === "cash" ? B.closingAccCash || byKind("cash") : pay ? B.closingAccPos || byKind("bank") : null;
     if (acc && accs.some((a) => a.id === acc)) { p.accountId = acc; c.accountId = f.payment.conf; } else if (L && L.tx.accountId) { p.accountId = L.tx.accountId; c.accountId = 0.5; } else c.accountId = 0;

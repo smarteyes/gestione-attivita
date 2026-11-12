@@ -204,7 +204,7 @@ window.GA = window.GA || {};
     const r = Object.assign({
       supplier: "", number: "", invoiceDate: today(), dueDate: today(),
       gross: "", vat: "", vatId: B.vatDefaultOut, vatManual: "", dedId: B.dedDefault,
-      categoryId: "", accountId: (S().accounts.find((a) => a.active !== false) || {}).id,
+      categoryId: "", accountId: (GA.engine.defaultAccountId ? GA.engine.defaultAccountId(S().accounts) : (S().accounts.find((a) => a.active !== false) || {}).id),
       notes: "", attachmentId: "",
     }, old || {}, preset || {});
     if (preset && preset.gross != null) r.gross = preset.gross;
@@ -218,7 +218,7 @@ window.GA = window.GA || {};
     }
     const ro = old && !canEdit(old) ? "disabled" : "";
     const cats = S().categories.filter((c) => c.type === "out" && (c.active !== false || c.id === r.categoryId));
-    const accs = S().accounts.filter((a) => a.active !== false || a.id === r.accountId);
+    const accs = (GA.engine.selectableAccounts ? GA.engine.selectableAccounts(S().accounts, r.accountId) : S().accounts.filter((a) => a.active !== false || a.id === r.accountId));
     const sc = r._scan;
     const m = U().modal(`${U().mhead(sc ? t("sc.review") : old ? t("inv.edit") : t("inv.new"))}
       <form id="invForm" class="stack">
@@ -303,7 +303,7 @@ window.GA = window.GA || {};
   function payForm(id) {
     const inv = (S().invoices || []).find((x) => x.id === id); if (!inv) return;
     const rem = remaining(inv);
-    const accs = S().accounts.filter((a) => a.active !== false);
+    const accs = (GA.engine.selectableAccounts ? GA.engine.selectableAccounts(S().accounts, inv.accountId) : S().accounts.filter((a) => a.active !== false));
     const defAcc = inv.accountId || (accs[0] || {}).id;
     const m = U().modal(`${U().mhead(t("inv.markPaid"))}
       <form id="invPayForm" class="stack">

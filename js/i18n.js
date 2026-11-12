@@ -238,3 +238,53 @@ GA.t = (p, v) => GA.i18n.t(p, v);
 })();
 /* t() con lingua esplicita (per la ricevuta stampata in un'altra lingua) */
 GA.tl = function (lang, path) { const prev = GA.i18n.lang; GA.i18n.lang = lang; const v = GA.i18n.t(path); GA.i18n.lang = prev; return v; };
+
+/* ---- IMPORTA ORDINI AMAZON ---- */
+(function () {
+  const add = {
+    it: { amz: {
+      import: "Importa ordini Amazon", title: "Importa ordini Amazon", reading: "Sto leggendo il resoconto…",
+      orders: "Ordini", items: "Articoli", total: "Totale", vat: "IVA", net: "Imponibile", byCat: "Per categoria",
+      account: "Conto su cui registrare", selNew: "Solo i nuovi", selNone: "Nessuno",
+      nSel: "{n} da importare", dup: "Già presente", fresh: "Nuovo",
+      cancelled: "Annullato", returned: "Reso", pending: "In sospeso",
+      enrich: "Aggiorna il movimento già in banca (descrizione, IVA, categoria)",
+      enrichHint: "movimento del {d}: {desc}",
+      confirm: "Importa i selezionati", saved: "Registrati {n} ordini",
+      enriched: "aggiornati {n} già in banca", empty: "Nessun ordine trovato nel file",
+      notAmazon: "Questo file non sembra un resoconto ordini Amazon Business.",
+      already: "Alcuni ordini risultano già importati e sono deselezionati.",
+      paidOn: "pagato il {d}", noCat: "Senza categoria"
+    } },
+    en: { amz: {
+      import: "Import Amazon orders", title: "Import Amazon orders", reading: "Reading the order report…",
+      orders: "Orders", items: "Items", total: "Total", vat: "VAT", net: "Net amount", byCat: "By category",
+      account: "Account to post to", selNew: "New only", selNone: "None",
+      nSel: "{n} to import", dup: "Already present", fresh: "New",
+      cancelled: "Cancelled", returned: "Returned", pending: "Pending",
+      enrich: "Update the existing bank movement (description, VAT, category)",
+      enrichHint: "movement on {d}: {desc}",
+      confirm: "Import selected", saved: "Recorded {n} orders",
+      enriched: "updated {n} already in the ledger", empty: "No orders found in the file",
+      notAmazon: "This file does not look like an Amazon Business order report.",
+      already: "Some orders were already imported and are unchecked.",
+      paidOn: "paid {d}", noCat: "No category"
+    } },
+    zh: { amz: {
+      import: "导入亚马逊订单", title: "导入亚马逊订单", reading: "正在读取订单报告…",
+      orders: "订单", items: "商品", total: "合计", vat: "增值税", net: "未税金额", byCat: "按类别",
+      account: "入账账户", selNew: "仅新记录", selNone: "全不选",
+      nSel: "将导入 {n} 笔", dup: "已存在", fresh: "新记录",
+      cancelled: "已取消", returned: "已退货", pending: "待处理",
+      enrich: "更新已有银行流水（描述、增值税、类别）",
+      enrichHint: "{d} 的流水：{desc}",
+      confirm: "导入所选", saved: "已登记 {n} 笔订单",
+      enriched: "已更新 {n} 笔已有记录", empty: "文件中未找到订单",
+      notAmazon: "此文件不像亚马逊企业购订单报告。",
+      already: "部分订单已导入，已取消勾选。",
+      paidOn: "付款于 {d}", noCat: "无类别"
+    } },
+  };
+  const merge = (a, b) => { Object.keys(b).forEach((k) => { if (b[k] && typeof b[k] === "object") { a[k] = a[k] || {}; merge(a[k], b[k]); } else a[k] = b[k]; }); };
+  Object.keys(add).forEach((l) => merge(GA.dict[l], add[l]));
+})();

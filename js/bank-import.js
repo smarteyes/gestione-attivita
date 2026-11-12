@@ -45,12 +45,16 @@ window.GA = window.GA || {};
     }
     if (isSheet) {
       let matrix;
-      if (/\.csv$/i.test(name) || (file.type || "").indexOf("csv") >= 0) matrix = parseCsvText(await file.text());
-      else {
+      if (/\.csv$/i.test(name) || (file.type || "").indexOf("csv") >= 0) {
+        const text = await file.text();
+        if (GA.amazonParse && GA.amazonParse.detectText(text)) return { __amazon: true, matrix: GA.amazonParse.parseCsv(text) };
+        matrix = parseCsvText(text);
+      } else {
         if (!window.XLSX) throw Object.assign(new Error("xlsx"), { code: "format" });
         const wb = window.XLSX.read(await file.arrayBuffer(), { type: "array", raw: false, cellDates: true });
         const sh = wb.Sheets[wb.SheetNames[0]];
         matrix = window.XLSX.utils.sheet_to_json(sh, { header: 1, raw: false, defval: "", dateNF: "dd/mm/yyyy" });
+        if (GA.amazonParse && GA.amazonParse.detectMatrix(matrix) >= 0) return { __amazon: true, matrix };
       }
       return P().parseTable(matrix);
     }
@@ -58,8 +62,9 @@ window.GA = window.GA || {};
   }
 
   function defBankAccount() {
-    const accs = (S().accounts || []).filter((a) => a.active !== false && a.kind !== "card");
-    return accs.find((a) => /banca|bank|bper/i.test(a.name || "")) || accs.find((a) => a.id === "acc-bank") || accs[0] || (S().accounts || [])[0];
+    const all = (GA.engine && GA.engine.selectableAccounts) ? GA.engine.selectableAccounts(S().accounts) : (S().accounts || []).filter((a) => a.active !== false);
+    const accs = all.filter((a) => a.kind !== "card");
+    return accs.find((a) => /banca|bank|bper/i.test(a.name || "")) || accs.find((a) => a.id === "acc-bank") || accs[0] || all[0];
   }
   function catOptions(type, sel) {
     return (S().categories || []).filter((c) => c.type === type && (c.active !== false || c.id === sel)).map((c) => `<option value="${esc(c.id)}" ${c.id === sel ? "selected" : ""}>${esc(c.name)}</option>`).join("");
@@ -74,7 +79,7 @@ window.GA = window.GA || {};
     const prev = alreadyHash(hash);
     const rows = P().matchAll(parsed.movements, { transactions: S().tx, invoices: S().invoices, accountId: acc0.id });
     rows.forEach((r) => { r.categoryId = P().guessCategory(r.mov, S().categories); });
-    const accs = (S().accounts || []).filter((a) => a.active !== false);
+    const accs = (GA.engine && GA.engine.selectableAccounts) ? GA.engine.selectableAccounts(S().accounts, acc0.id) : (S().accounts || []).filter((a) => a.active !== false);
     const period = parsed.meta.periodEnd || parsed.summary.closingDate || "";
     const warn = !v.ok;
     const m = U().modal(`${U().mhead(t("bk.title"))}
@@ -178,6 +183,11 @@ window.GA = window.GA || {};
         const file2 = new File([buf], file.name, { type: file.type });
         const parsed = await parseFile(file2);
         U().closeModal();
+        if (parsed && parsed.__amazon && GA.amazonImportUI) {
+          const amz = GA.amazonParse.parseMatrix(parsed.matrix);
+          if (!amz.orders.length) { U().toast(t("amz.empty"), true); return; }
+          return GA.amazonImportUI.review(amz, file);
+        }
         if (!parsed.movements.length) { U().toast(t("bk.empty"), true); return; }
         review(parsed, file, hash);
       } catch (er) {

@@ -232,6 +232,7 @@ window.GA = window.GA || {};
     return `<header class="page-head"><h1>${t("nav.tx")}</h1><div class="head-actions">
         <a class="btn ghost sm" href="#/closing">${I("moon")}<span>${t("cl.title")}</span></a>
         <button type="button" class="btn ghost sm" data-bkimport>${I("bank")}<span>${t("bk.import")}</span></button>
+        <button type="button" class="btn ghost sm" data-amzimport>${I("box")}<span>${t("amz.import")}</span></button>
         <button class="btn ghost sm" data-rec>${I("repeat")}<span>${t("tx.recurrence")}</span></button>
         <button class="btn primary sm" data-new>${I("plus")}<span>${F.type === "out" ? t("tx.newOut") : t("tx.newIn")}</span></button></div></header>
       ${cal}
@@ -257,7 +258,7 @@ window.GA = window.GA || {};
   /* ---------- FORM MOVIMENTO (inserimento rapido su telefono) ---------- */
   function txForm(id, preset) {
     const B = S().book, old = id ? S().tx.find((x) => x.id === id) : null;
-    const r = Object.assign({ type: "in", paid: true, date: today(), accountId: (S().accounts.find((a) => a.active !== false) || {}).id, deptId: (S().departments[0] || {}).id, vatId: B.vatDefaultIn, dedId: B.dedDefault, gross: "" }, old || {}, preset || {});
+    const r = Object.assign({ type: "in", paid: true, date: today(), accountId: E.defaultAccountId(S().accounts), deptId: (S().departments[0] || {}).id, vatId: B.vatDefaultIn, dedId: B.dedDefault, gross: "" }, old || {}, preset || {});
     if (!old && preset && preset.type === "out" && !preset.vatId) r.vatId = B.vatDefaultOut;
     const ro = old && !canEdit(old) ? "disabled" : "";
     const draw = () => {
@@ -274,7 +275,7 @@ window.GA = window.GA || {};
           <div class="calc" id="calc"></div>
           <div class="form-grid">
             <label class="${un("date")}">${t("tx.date")}${unB("date")}<input type="date" name="date" required value="${esc(r.date)}" ${ro}></label>
-            <label class="${un("accountId")}">${t("tx.account")}${unB("accountId")}<select name="accountId" ${ro}>${S().accounts.filter((a) => a.active !== false || a.id === r.accountId).map((a) => `<option value="${a.id}" ${a.id === r.accountId ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select></label>
+            <label class="${un("accountId")}">${t("tx.account")}${unB("accountId")}<select name="accountId" ${ro}>${E.selectableAccounts(S().accounts, r.accountId).map((a) => `<option value="${a.id}" ${a.id === r.accountId ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select></label>
             <label class="full${un("categoryId")}">${t("tx.category")}${unB("categoryId")}<select name="categoryId" ${ro}><option value="">${t("tx.noCat")}</option>${cats.map((c) => `<option value="${c.id}" ${c.id === r.categoryId ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label>
             <label class="full${un("desc")}">${t("tx.desc")}${unB("desc")}<input name="desc" value="${esc(r.desc)}" ${ro} list="descList"><datalist id="descList">${Array.from(new Set(S().tx.filter((x) => x.type === r.type).map((x) => x.desc).filter(Boolean))).slice(0, 50).map((d) => `<option value="${esc(d)}">`).join("")}</datalist></label>
             <label class="${un("vatId")}">${t("tx.vat")}${unB("vatId")}<select name="vatId" ${ro}>${S().vatRates.map((v) => `<option value="${v.id}" ${v.id === r.vatId ? "selected" : ""}>${esc(v.name)}</option>`).join("")}</select></label>
@@ -317,7 +318,7 @@ window.GA = window.GA || {};
 
   /* ---------- RICORRENZA (stesse frequenze del form Excel) ---------- */
   function recurrenceForm(type) {
-    const B = S().book; const r = { type: type || "out", first: today(), end: E.addMonths(today(), 11), freq: "monthly", vatId: type === "in" ? B.vatDefaultIn : B.vatDefaultOut, dedId: B.dedDefault, accountId: (S().accounts[0] || {}).id, deptId: (S().departments[0] || {}).id };
+    const B = S().book; const r = { type: type || "out", first: today(), end: E.addMonths(today(), 11), freq: "monthly", vatId: type === "in" ? B.vatDefaultIn : B.vatDefaultOut, dedId: B.dedDefault, accountId: E.defaultAccountId(S().accounts), deptId: (S().departments[0] || {}).id };
     const draw = () => {
       const m = U().modal(`${U().mhead(t("tx.recTitle"))}<form id="recForm" class="stack">
         <div class="seg wide">${["in", "out"].map((k) => `<button type="button" class="${r.type === k ? "on " + k : ""}" data-type="${k}">${t("tx." + k)}</button>`).join("")}</div>
@@ -326,7 +327,7 @@ window.GA = window.GA || {};
           <label>${t("tx.gross")} *<input name="gross" type="number" step="0.01" required value="${esc(r.gross)}" inputmode="decimal"></label>
           <label>${t("tx.freq")}<select name="freq">${GA.options.freq.map((f) => `<option value="${f}" ${r.freq === f ? "selected" : ""}>${t("o.freq." + f)}</option>`).join("")}</select></label>
           <label>${t("tx.first")}<input type="date" name="first" required value="${r.first}"></label><label>${t("tx.end")}<input type="date" name="end" required value="${r.end}"></label>
-          <label>${t("tx.account")}<select name="accountId">${S().accounts.filter((a) => a.active !== false).map((a) => `<option value="${a.id}" ${a.id === r.accountId ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select></label>
+          <label>${t("tx.account")}<select name="accountId">${E.selectableAccounts(S().accounts, r.accountId).map((a) => `<option value="${a.id}" ${a.id === r.accountId ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select></label>
           <label>${t("tx.category")}<select name="categoryId"><option value="">${t("tx.noCat")}</option>${S().categories.filter((c) => c.type === r.type && c.active !== false).map((c) => `<option value="${c.id}" ${c.id === r.categoryId ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label>
           <label>${t("tx.vat")}<select name="vatId">${S().vatRates.filter((v) => !v.manual).map((v) => `<option value="${v.id}" ${v.id === r.vatId ? "selected" : ""}>${esc(v.name)}</option>`).join("")}</select></label>
           ${r.type === "out" ? `<label>${t("tx.ded")}<select name="dedId">${S().dedRates.map((d) => `<option value="${d.id}" ${d.id === r.dedId ? "selected" : ""}>${esc(d.name)}</option>`).join("")}</select></label>` : ""}
@@ -378,8 +379,8 @@ window.GA = window.GA || {};
         ${trs.length ? `<div class="txlist">${trs.map((x) => `<div class="tx tr3" data-tr="${x.id}"><span class="tx-ic">${I(x.from === "IVA" || x.to === "IVA" ? "receipt" : "swap")}</span><span class="tx-main"><b>${esc(an(x.from))} → ${esc(an(x.to))}</b><small>${U().fmtDate(x.date)}${x.notes ? " · " + esc(x.notes) : ""}</small></span><span class="tx-amt"><b>${M(x.amount)}</b></span></div>`).join("")}</div>` : `<p class="empty">${t("m.empty")}</p>`}</section>`;
   }
   function transferForm(id) {
-    const old = id ? S().transfers.find((x) => x.id === id) : null; const r = Object.assign({ date: today(), from: (S().accounts[0] || {}).id, to: (S().accounts[1] || {}).id || "IVA" }, old || {});
-    const opts = (cur) => S().accounts.map((a) => `<option value="${a.id}" ${a.id === cur ? "selected" : ""}>${esc(a.name)}</option>`).join("") + `<option value="IVA" ${cur === "IVA" ? "selected" : ""}>${t("acc.vatPseudo")}</option>`;
+    const old = id ? S().transfers.find((x) => x.id === id) : null; const accs = E.selectableAccounts(S().accounts); const r = Object.assign({ date: today(), from: (accs[0] || {}).id, to: (accs[1] || {}).id || "IVA" }, old || {});
+    const opts = (cur) => E.selectableAccounts(S().accounts, cur).map((a) => `<option value="${a.id}" ${a.id === cur ? "selected" : ""}>${esc(a.name)}</option>`).join("") + `<option value="IVA" ${cur === "IVA" ? "selected" : ""}>${t("acc.vatPseudo")}</option>`;
     const ro = old && !canEdit(old) ? "disabled" : "";
     const m = U().modal(`${U().mhead(t("acc.newTransfer"))}<form id="trForm" class="stack"><div class="form-grid">
       <label>${t("tx.date")}<input type="date" name="date" required value="${r.date}" ${ro}></label><label>${t("acc.amount")}<input type="number" step="0.01" min="0.01" name="amount" required value="${esc(r.amount)}" inputmode="decimal" ${ro}></label>
@@ -549,6 +550,7 @@ window.GA = window.GA || {};
       if ((x = el("[data-scansheet]"))) return GA.scan.sheet();
       if (el("[data-new]")) return txForm(null, { type: S().f.type || "in" });
       if (el("[data-bkimport]")) { e.stopPropagation(); return GA.bankImportUI.open(); }
+      if (el("[data-amzimport]")) { e.stopPropagation(); return GA.amazonImportUI.open(); }
       if (el("[data-rec]")) return recurrenceForm(S().f.type || "out");
       if (el("[data-defvat]")) return defaultVatForm();
       if (el("[data-trnew]")) return transferForm(null);

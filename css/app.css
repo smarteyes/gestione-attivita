@@ -579,3 +579,9 @@ html.theme-macaron .inv-row.soon .li-main small { color: #c2386f; }
   .bk-row select, .bk-row .bk-st { grid-column: 2 / -1; }
   .bk-amt { grid-column: 3; grid-row: 1; }
 }
+
+.amz-cat { padding: 12px 14px; }
+.amz-cat .label { display: block; margin-bottom: 8px; }
+.amz-chart-wrap { position: relative; width: 100%; height: 160px; }
+.amz-row.enrich .bk-st { color: var(--ink2); }
+.amz-row.dup { opacity: .78; }

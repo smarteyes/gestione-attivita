@@ -150,7 +150,7 @@ window.GA = window.GA || {};
     const B = S().book, tx = p.txId ? S().tx.find((x) => x.id === p.txId) : null; const on = p.id ? !!tx : !!B.eventsAutoEntry;
     const o = (list, cur) => list.map((x) => `<option value="${x.id}" ${x.id === cur ? "selected" : ""}>${esc(x.name)}</option>`).join("");
     return `<div class="full entry-box"><label class="switch-row"><input type="checkbox" name="asEntry" ${on ? "checked" : ""}><span>${GA.icon("link")} ${t("ev.asEntry")}</span></label>
-      <div class="form-grid three entry-f"><label>${t("tx.account")}<select name="e_accountId">${o(S().accounts.filter((a) => a.active !== false), tx ? tx.accountId : B.eventsEntryAccount)}</select></label>
+      <div class="form-grid three entry-f"><label>${t("tx.account")}<select name="e_accountId">${o((GA.engine.selectableAccounts ? GA.engine.selectableAccounts(S().accounts, tx ? tx.accountId : B.eventsEntryAccount) : S().accounts.filter((a) => a.active !== false)), tx ? tx.accountId : B.eventsEntryAccount)}</select></label>
       <label>${t("tx.category")}<select name="e_categoryId"><option value="">${t("tx.noCat")}</option>${o(S().categories.filter((c) => c.type === "in"), tx ? tx.categoryId : B.eventsEntryCategory)}</select></label>
       <label>${t("tx.vat")}<select name="e_vatId">${o(S().vatRates.filter((v) => !v.manual), tx ? tx.vatId : B.eventsEntryVat || B.vatDefaultIn)}</select></label></div>
       <small class="muted">${t("ev.entryHint")}</small></div>`;

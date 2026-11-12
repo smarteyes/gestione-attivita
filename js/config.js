@@ -5,7 +5,7 @@
 window.GA = window.GA || {};
 
 GA.config = {
-  appVersion: 19,  // mostrata in Impostazioni; allineata a sw.js ga-vN e ?v=N in index.html
+  appVersion: 20,  // mostrata in Impostazioni; allineata a sw.js ga-vN e ?v=N in index.html
   // Scansione scontrini/fatture. extractor: "local" = OCR nel browser (offline, Tesseract.js + pdf.js inclusi);
   // "remote" = il backend legge il documento (es. servizio AI di visione) via POST {restBaseUrl}/scan. Nessuna chiamata online finché resta "local".
   scan: { extractor: "local", maxSide: 2000, keepSide: 1400, keepQuality: 0.62, psm: "4" },
