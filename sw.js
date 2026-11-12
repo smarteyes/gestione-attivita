@@ -3,11 +3,11 @@
    - vendor/fonts/icons: cache prima
    - /api/*: mai in cache
    Cambiare VERSION forza nuova installazione e cancella le cache vecchie. */
-const VERSION = "ga-v17";
+const VERSION = "ga-v18";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "fonts/fonts.css",
   "css/app.css", "css/themes.css",
   "js/engine.js", "js/config.js", "js/runtime-config.js", "js/i18n.js", "js/icons.js",
-  "js/storage.js", "js/settings.js", "js/scan-parse.js", "js/scan.js", "js/accounting.js", "js/invoices.js", "js/events.js", "js/app.js",
+  "js/storage.js", "js/settings.js", "js/scan-parse.js", "js/scan.js", "js/accounting.js", "js/invoices.js", "js/bank-import-parse.js", "js/bank-import.js", "js/events.js", "js/app.js",
   "vendor/xlsx.full.min.js", "vendor/chart.umd.min.js", "assets/logo.svg", "icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {

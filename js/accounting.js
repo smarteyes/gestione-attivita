@@ -231,6 +231,7 @@ window.GA = window.GA || {};
     </section>`;
     return `<header class="page-head"><h1>${t("nav.tx")}</h1><div class="head-actions">
         <a class="btn ghost sm" href="#/closing">${I("moon")}<span>${t("cl.title")}</span></a>
+        <button type="button" class="btn ghost sm" data-bkimport>${I("bank")}<span>${t("bk.import")}</span></button>
         <button class="btn ghost sm" data-rec>${I("repeat")}<span>${t("tx.recurrence")}</span></button>
         <button class="btn primary sm" data-new>${I("plus")}<span>${F.type === "out" ? t("tx.newOut") : t("tx.newIn")}</span></button></div></header>
       ${cal}
@@ -547,6 +548,7 @@ window.GA = window.GA || {};
       if ((x = el("[data-quick]"))) return txForm(null, { type: x.dataset.quick });
       if ((x = el("[data-scansheet]"))) return GA.scan.sheet();
       if (el("[data-new]")) return txForm(null, { type: S().f.type || "in" });
+      if (el("[data-bkimport]")) { e.stopPropagation(); return GA.bankImportUI.open(); }
       if (el("[data-rec]")) return recurrenceForm(S().f.type || "out");
       if (el("[data-defvat]")) return defaultVatForm();
       if (el("[data-trnew]")) return transferForm(null);

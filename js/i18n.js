@@ -133,6 +133,47 @@ GA.t = (p, v) => GA.i18n.t(p, v);
   const merge = (a, b) => { Object.keys(b).forEach((k) => { if (b[k] && typeof b[k] === "object") { a[k] = a[k] || {}; merge(a[k], b[k]); } else a[k] = b[k]; }); };
   Object.keys(add).forEach((l) => merge(GA.dict[l], add[l]));
 })();
+
+/* ---- IMPORT ESTRATTO CONTO ---- */
+(function () {
+  const add = {
+    it: { bk: {
+      import: "Importa estratto conto", title: "Importa estratto conto", reading: "Sto leggendo l'estratto…",
+      opening: "Saldo iniziale", closing: "Saldo finale", expected: "nell'estratto",
+      mismatch: "I totali letti non coincidono con quelli dell'estratto: controlla l'elenco prima di confermare.",
+      already: "Questo estratto risulta già importato il {d}. Le righe già presenti sono deselezionate.",
+      account: "Conto su cui registrare", selNew: "Solo i nuovi", selNone: "Nessuno",
+      nSel: "{n} da importare", dup: "Già presente", fresh: "Nuovo",
+      exec: "eseguito il {d}", valuta: "Valuta",
+      alignManual: "Salva il saldo finale come saldo da estratto conto (verifica in Conti)",
+      confirm: "Importa i selezionati", saved: "Importati {n} movimenti", empty: "Nessun movimento trovato nel file"
+    } },
+    en: { bk: {
+      import: "Import bank statement", title: "Import bank statement", reading: "Reading the statement…",
+      opening: "Opening balance", closing: "Closing balance", expected: "on the statement",
+      mismatch: "The totals I read do not match the statement: check the list before confirming.",
+      already: "This statement was already imported on {d}. Rows already in the ledger are unchecked.",
+      account: "Account to post to", selNew: "New only", selNone: "None",
+      nSel: "{n} to import", dup: "Already present", fresh: "New",
+      exec: "made on {d}", valuta: "Value date",
+      alignManual: "Save the closing balance as the statement balance (for the Accounts check)",
+      confirm: "Import selected", saved: "Imported {n} transactions", empty: "No transactions found in the file"
+    } },
+    zh: { bk: {
+      import: "导入银行对账单", title: "导入银行对账单", reading: "正在读取对账单…",
+      opening: "期初余额", closing: "期末余额", expected: "对账单上为",
+      mismatch: "读取的合计与对账单不符：确认前请检查列表。",
+      already: "此对账单已于 {d} 导入。已存在的行已取消勾选。",
+      account: "入账账户", selNew: "仅新记录", selNone: "全不选",
+      nSel: "将导入 {n} 笔", dup: "已存在", fresh: "新记录",
+      exec: "发生于 {d}", valuta: "起息日",
+      alignManual: "将期末余额保存为对账单余额（供账户核对）",
+      confirm: "导入所选", saved: "已导入 {n} 笔", empty: "文件中未找到交易"
+    } },
+  };
+  const merge = (a, b) => { Object.keys(b).forEach((k) => { if (b[k] && typeof b[k] === "object") { a[k] = a[k] || {}; merge(a[k], b[k]); } else a[k] = b[k]; }); };
+  Object.keys(add).forEach((l) => merge(GA.dict[l], add[l]));
+})();
 /* ---- SCANSIONE SCONTRINI / FATTURE ---- */
 (function () {
   const add = {
