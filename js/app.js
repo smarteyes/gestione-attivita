@@ -147,6 +147,10 @@
           if (r2 && r2.created) toast(t("imp.otherAccountCreated"));
           else if (r2 && r2.renamed) toast(t("imp.otherAccountRenamed"));
         }
+        if (typeof api.migrateClosingUnpaidAccountV23 === "function") {
+          const r3 = await api.migrateClosingUnpaidAccountV23();
+          if (r3 && r3.n) toast(t("imp.movedUnpaidToOther", { n: String(r3.n), v: money(r3.gross) }));
+        }
         S._migClosing = true;
       } catch (e) { /* riprova al prossimo caricamento */ }
     }

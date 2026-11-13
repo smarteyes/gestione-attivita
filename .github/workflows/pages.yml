@@ -26,6 +26,7 @@ jobs:
           rsync -a --delete \
             --exclude '.git/' \
             --exclude '.github/' \
+            --exclude 'test/' \
             ./ "$RUNNER_TEMP/site/"
       - uses: actions/upload-pages-artifact@v3
         with:
