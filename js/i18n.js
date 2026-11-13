@@ -292,9 +292,9 @@ GA.tl = function (lang, path) { const prev = GA.i18n.lang; GA.i18n.lang = lang; 
 /* ---- Spostamento import da Contanti a Banca ---- */
 (function () {
   const add = {
-    it: { imp: { movedToBank: "Spostati {n} movimenti importati da Contanti a Banca ({v})", otherAccountCreated: "Aggiunto il conto Altro incasso", otherAccountRenamed: "Il conto Non riscosso è ora Altro incasso" } },
-    en: { imp: { movedToBank: "Moved {n} imported transactions from Cash to Bank ({v})", otherAccountCreated: "Added the Other takings account", otherAccountRenamed: "The Not collected account is now Other takings" } },
-    zh: { imp: { movedToBank: "已将 {n} 笔导入记录从现金转到银行（{v}）", otherAccountCreated: "已添加“其他收入”账户", otherAccountRenamed: "“未收款”账户已更名为“其他收入”" } },
+    it: { imp: { movedToBank: "Spostati {n} movimenti importati da Contanti a Banca ({v})", otherAccountCreated: "Aggiunto il conto Altro incasso", otherAccountRenamed: "Il conto Non riscosso è ora Altro incasso", movedUnpaidToOther: "Spostati {n} «Altro incasso» da Contanti ({v})" } },
+    en: { imp: { movedToBank: "Moved {n} imported transactions from Cash to Bank ({v})", otherAccountCreated: "Added the Other takings account", otherAccountRenamed: "The Not collected account is now Other takings", movedUnpaidToOther: "Moved {n} Other takings off Cash ({v})" } },
+    zh: { imp: { movedToBank: "已将 {n} 笔导入记录从现金转到银行（{v}）", otherAccountCreated: "已添加“其他收入”账户", otherAccountRenamed: "“未收款”账户已更名为“其他收入”", movedUnpaidToOther: "已将 {n} 笔其他收入从现金转出（{v}）" } },
   };
   const merge = (a, b) => { Object.keys(b).forEach((k) => { if (b[k] && typeof b[k] === "object") { a[k] = a[k] || {}; merge(a[k], b[k]); } else a[k] = b[k]; }); };
   Object.keys(add).forEach((l) => merge(GA.dict[l], add[l]));

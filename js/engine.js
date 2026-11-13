@@ -419,6 +419,56 @@
     });
     return { transactions: transactions, changed: changed };
   };
+  /* ga-v23: chiusure «unpaid» (Altro incasso) finite in cassa → conto Altro incasso.
+   * closingUnpaidRoutedV23 ricorda che il libro è già stato allineato: una scelta
+   * successiva in Impostazioni (anche di nuovo Contanti) non si sovrascrive.
+   * Idempotente: alla seconda esecuzione non sposta altri movimenti. */
+  E.migrateClosingUnpaidAccount = function (book, accounts, txs) {
+    const src = book || {};
+    const ensured = E.ensureOtherTakingsAccount(accounts || [], src.lang || "it");
+    const otherId = (ensured.account || {}).id || "";
+    const b = Object.assign({}, src);
+    const already = !!b.closingUnpaidRoutedV23;
+    const moves = [];
+    let bookChanged = false;
+    if (!already && otherId) {
+      const cashId = b.closingAccCash || "acc-cash";
+      const cur = b.closingAccUnpaid || "";
+      const pointsCash = !cur || cur === "acc-cash" || cur === cashId;
+      if (pointsCash && cur !== otherId) b.closingAccUnpaid = otherId;
+      b.closingUnpaidRoutedV23 = true;
+      bookChanged = true;
+      const byId = Object.create(null);
+      (ensured.accounts || []).forEach((a) => { if (a && a.id) byId[a.id] = a; });
+      (txs || []).forEach((t) => {
+        if (!t || t.closing !== "unpaid" || !t.id) return;
+        const id = t.accountId || "";
+        if (id === otherId) return;
+        const acc = id ? byId[id] : null;
+        const onCash = !id || id === "acc-cash" || id === cashId || E.isCashAccount(acc);
+        if (!onCash) return;
+        moves.push({ id: t.id, from: id, to: otherId, gross: Math.abs(Number(t.gross) || 0) });
+      });
+    }
+    const gross = Math.round(moves.reduce((s, m) => s + m.gross, 0) * 100) / 100;
+    return {
+      book: b, bookChanged: bookChanged, accounts: ensured.accounts, accountsChanged: ensured.changed || 0,
+      account: ensured.account || null, created: !!ensured.created, renamed: !!ensured.renamed,
+      moves: moves, n: moves.length, gross: gross, already: already,
+    };
+  };
+  E.applyClosingUnpaidAccount = function (txs, plan) {
+    const by = Object.create(null);
+    ((plan && plan.moves) || []).forEach((m) => { if (m && m.id) by[m.id] = m; });
+    let changed = 0;
+    const transactions = (txs || []).map((t) => {
+      const m = t && by[t.id];
+      if (!m || (t.accountId || "") === m.to) return t;
+      changed++;
+      return Object.assign({}, t, { accountId: m.to });
+    });
+    return { transactions: transactions, changed: changed };
+  };
   E.closingUnpaidName = function (lang) {
     return ({ it: "Altro incasso", en: "Other takings", zh: "其他收入" }[lang] || "Altro incasso");
   };

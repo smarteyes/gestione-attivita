@@ -218,6 +218,7 @@ window.GA = window.GA || {};
       transactions: Object.assign(withFiles(crud("transactions")), {
         // CHIUSURA SERATA: una Entrata per canale non vuoto (Contanti, POS, Altro incasso) per data + attività.
         // Se la chiusura di quella data esiste già viene aggiornata (niente doppioni); un importo azzerato elimina la riga.
+        // Il canale unpaid usa closingAccUnpaid (predefinito acc-other). Se il conto manca, Altro incasso — non Contanti.
         saveClosing: async (d) => {
           const u = reqU(), b = book(); let txs = col("transactions");
           if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d.date || "")) throw err("date");
@@ -226,11 +227,20 @@ window.GA = window.GA || {};
           if (ex.some((t) => !own(u, t))) throw err("perm");
           const rows = d.rows || {}; if (!GA.closingChannels.some(([ch]) => num((rows[ch] || {}).gross))) throw err("amount");
           const desc = GA.tl ? GA.tl(b.lang || "it", "cl.title") : "Chiusura serata"; const out = [];
+          const otherId = () => {
+            const other = col("accounts").find((a) => GA.engine && GA.engine.isOtherTakingsAccount && GA.engine.isOtherTakingsAccount(a));
+            return (other || {}).id || "acc-other";
+          };
+          const accFor = (ch, K) => {
+            const set = b["closingAcc" + K];
+            if (set) return set;
+            return ch === "unpaid" ? otherId() : (b.closingAccCash || (col("accounts")[0] || {}).id);
+          };
           GA.closingChannels.forEach(([ch, K]) => {
             const r = rows[ch] || {}, g = Math.round(num(r.gross) * 100) / 100, old = ex.find((t) => t.closing === ch);
             if (!g) { if (old) txs = txs.filter((t) => t.id !== old.id); return; }
             const rec = { type: "in", date: d.date, deptId: dept, categoryId: b["closingCat" + K] || "", desc, gross: g, vatId: r.vatId || (GA.engine && GA.engine.closingVatId ? GA.engine.closingVatId(b, K, col("vatRates")) : b["closingVat" + K] || b.vatDefaultIn), vatManual: 0, dedId: "", notes: d.notes || "", closing: ch,
-              paid: true, accountId: b["closingAcc" + K] || b.closingAccCash || (col("accounts")[0] || {}).id };
+              paid: true, accountId: accFor(ch, K) };
             if (old) { const i = txs.findIndex((t) => t.id === old.id); const n = Object.assign({}, old, rec, { updatedAt: now(), updatedBy: u.id }); validate("transactions", n, txs); txs[i] = n; out.push(n); }
             else { const n = Object.assign({ id: uid(), createdBy: u.id, createdAt: now(), updatedAt: now() }, rec); validate("transactions", n, txs); txs.push(n); out.push(n); }
           });
@@ -417,6 +427,30 @@ window.GA = window.GA || {};
         if (r.changed) write("accounts", r.accounts);
         return { changed: r.changed, created: !!r.created, renamed: !!r.renamed, id: (r.account || {}).id || "" };
       },
+      // Libri nati con closingAccUnpaid = Contanti: punta il canale su Altro incasso e sposta le chiusure già salvate.
+      // Una volta scritto closingUnpaidRoutedV23 non si ripete, così Impostazioni può rimettere un altro conto.
+      migrateClosingUnpaidAccountV23: async () => {
+        const u = reqU();
+        if (u.role !== "admin" || !GA.engine || !GA.engine.migrateClosingUnpaidAccount || !GA.engine.applyClosingUnpaidAccount) return { n: 0, gross: 0 };
+        const plan = GA.engine.migrateClosingUnpaidAccount(book() || {}, col("accounts"), col("transactions"));
+        if (plan.accountsChanged) write("accounts", plan.accounts);
+        let n = 0, gross = 0;
+        if (plan.moves.length) {
+          const txs = col("transactions");
+          const txM = GA.engine.applyClosingUnpaidAccount(txs, plan);
+          if (txM.changed) {
+            const stamped = txM.transactions.map((t, i) => {
+              const o = txs[i];
+              return (o && t !== o) ? Object.assign({}, t, { updatedAt: now(), updatedBy: u.id }) : t;
+            });
+            write("transactions", stamped);
+            n = txM.changed;
+            gross = plan.gross;
+          }
+        }
+        if (plan.bookChanged) write("book", plan.book);
+        return { n: n, gross: gross, id: (plan.account || {}).id || "", created: !!plan.created, renamed: !!plan.renamed, book: !!plan.bookChanged };
+      },
       _initBook: initBook, _reloadSession: () => { session = read("session", null); },
     };
   }
@@ -532,6 +566,7 @@ window.GA = window.GA || {};
       migrateClosingV14: wrap(core.migrateClosingV14, true),
       migrateImportedToBankV21: wrap(core.migrateImportedToBankV21, true),
       migrateEnsureOtherAccountV22: wrap(core.migrateEnsureOtherAccountV22, true),
+      migrateClosingUnpaidAccountV23: wrap(core.migrateClosingUnpaidAccountV23, true),
       app: { get: async () => (token ? wrap(core.app.get, false)() : rpc("status").then((s) => ({ allowSelfRegistration: !!s.allowSelfRegistration }))), set: wrap(core.app.set, true) },
       accounts: W(core.accounts), departments: W(core.departments), vatRates: W(core.vatRates), dedRates: W(core.dedRates), categories: W(core.categories),
       transactions: W(core.transactions), transfers: W(core.transfers), clients: W(core.clients), events: W(core.events), payments: W(core.payments), invoices: W(core.invoices),
